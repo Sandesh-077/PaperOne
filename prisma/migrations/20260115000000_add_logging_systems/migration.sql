@@ -1,8 +1,8 @@
--- Add unitsCompleted and notes to LearningSession
-ALTER TABLE "LearningSession" ADD COLUMN IF NOT EXISTS "unitsCompleted" INTEGER NOT NULL DEFAULT 0;
-ALTER TABLE "LearningSession" ADD COLUMN IF NOT EXISTS "notes" TEXT;
+-- AlterTable
+ALTER TABLE "LearningSession" ADD COLUMN IF NOT EXISTS "notes" TEXT,
+ADD COLUMN IF NOT EXISTS "unitsCompleted" INTEGER NOT NULL DEFAULT 0;
 
--- Create PracticePaperLog table
+-- CreateTable
 CREATE TABLE IF NOT EXISTS "PracticePaperLog" (
     "id" TEXT NOT NULL,
     "practicePaperId" TEXT NOT NULL,
@@ -19,13 +19,11 @@ CREATE TABLE IF NOT EXISTS "PracticePaperLog" (
     CONSTRAINT "PracticePaperLog_pkey" PRIMARY KEY ("id")
 );
 
--- Create indexes
+-- CreateIndex
 CREATE INDEX IF NOT EXISTS "PracticePaperLog_practicePaperId_idx" ON "PracticePaperLog"("practicePaperId");
+
+-- CreateIndex
 CREATE INDEX IF NOT EXISTS "PracticePaperLog_date_idx" ON "PracticePaperLog"("date");
 
--- Add foreign key constraint
-ALTER TABLE "PracticePaperLog" 
-ADD CONSTRAINT "PracticePaperLog_practicePaperId_fkey" 
-FOREIGN KEY ("practicePaperId") 
-REFERENCES "PracticePaper"("id") 
-ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey
+ALTER TABLE "PracticePaperLog" ADD CONSTRAINT "PracticePaperLog_practicePaperId_fkey" FOREIGN KEY ("practicePaperId") REFERENCES "PracticePaper"("id") ON DELETE CASCADE ON UPDATE CASCADE;
