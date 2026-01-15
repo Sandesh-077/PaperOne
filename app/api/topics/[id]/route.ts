@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic'
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
+  const resolvedParams = await Promise.resolve(params)
   const session = await getServerSession(authOptions)
   
   if (!session?.user?.id) {
@@ -17,7 +18,7 @@ export async function PATCH(
   }
 
   const topic = await prisma.topic.findUnique({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
     include: { subject: true },
   })
 
@@ -32,11 +33,11 @@ export async function PATCH(
     data.completedAt = new Date()
     
     // Schedule revisions based on forgetting curve
-    await scheduleRevisions(params.id)
+    await scheduleRevisions(resolvedParams.id)
   }
 
   const updatedTopic = await prisma.topic.update({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
     data,
     include: {
       subtopics: true,
@@ -52,8 +53,9 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
+  const resolvedParams = await Promise.resolve(params)
   const session = await getServerSession(authOptions)
   
   if (!session?.user?.id) {
@@ -61,7 +63,7 @@ export async function DELETE(
   }
 
   const topic = await prisma.topic.findUnique({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
     include: { subject: true },
   })
 
@@ -70,7 +72,7 @@ export async function DELETE(
   }
 
   await prisma.topic.delete({
-    where: { id: params.id },
+    where: { id: resolvedParams.id },
   })
 
   return NextResponse.json({ success: true })
