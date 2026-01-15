@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getDailyTopic, getRandomTopic } from '@/lib/topics'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const type = searchParams.get('type') || 'daily'
