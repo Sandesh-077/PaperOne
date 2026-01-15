@@ -49,6 +49,7 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ id: s
     } else if (status === 'authenticated') {
       fetchSubject()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, router])
 
   const fetchSubject = async () => {

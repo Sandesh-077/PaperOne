@@ -32,6 +32,7 @@ export default function SATPage() {
   useEffect(() => {
     fetchSessions();
     fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSessions = async () => {
@@ -388,7 +389,7 @@ export default function SATPage() {
                     )}
                     
                     {session.notes && (
-                      <p className="text-sm text-gray-600 italic mt-2">"{session.notes}"</p>
+                      <p className="text-sm text-gray-600 italic mt-2">&ldquo;{session.notes}&rdquo;</p>
                     )}
                   </div>
                   

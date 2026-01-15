@@ -29,7 +29,7 @@ export async function GET() {
   })
 
   // Calculate progress percentage
-  const projectsWithProgress = projects.map(project => {
+  const projectsWithProgress = projects.map((project: any) => {
     const progressPercentage = project.totalUnits
       ? Math.round((project.completedUnits / project.totalUnits) * 100)
       : 0

@@ -26,7 +26,7 @@ export async function GET() {
   })
 
   // Calculate days remaining for each exam
-  const examsWithCountdown = exams.map(exam => {
+  const examsWithCountdown = exams.map((exam: any) => {
     const now = new Date()
     const examDate = new Date(exam.examDate)
     const daysRemaining = Math.ceil((examDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))

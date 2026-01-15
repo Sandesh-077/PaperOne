@@ -357,7 +357,7 @@ export default function LearningPage() {
                             </div>
                           </div>
                           {session.notes && (
-                            <p className="text-gray-600 mt-1 italic">"{session.notes}"</p>
+                            <p className="text-gray-600 mt-1 italic">&ldquo;{session.notes}&rdquo;</p>
                           )}
                         </div>
                       ))}

@@ -78,7 +78,7 @@ export async function GET() {
   ])
 
   // Calculate exam countdowns
-  const examsWithCountdown = upcomingExams.map(exam => {
+  const examsWithCountdown = upcomingExams.map((exam: any) => {
     const daysRemaining = Math.ceil(
       (new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
     )
@@ -119,7 +119,7 @@ export async function GET() {
 
   // Calculate learning projects streak
   const learningStreak = recentLearningProjects.length > 0
-    ? Math.max(...recentLearningProjects.map(p => {
+    ? Math.max(...recentLearningProjects.map((p: any) => {
         if (!p.lastStudied) return 0
         const daysSince = Math.floor(
           (new Date().getTime() - new Date(p.lastStudied).getTime()) / (1000 * 60 * 60 * 24)
@@ -132,7 +132,7 @@ export async function GET() {
   const unifiedStreak = Math.max(studyStreak, satStreak, learningStreak)
 
   // Learning projects with progress
-  const projectsWithProgress = recentLearningProjects.map(project => ({
+  const projectsWithProgress = recentLearningProjects.map((project: any) => ({
     ...project,
     progressPercentage: project.totalUnits
       ? Math.round((project.completedUnits / project.totalUnits) * 100)
