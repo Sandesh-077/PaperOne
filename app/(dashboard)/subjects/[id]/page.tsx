@@ -51,10 +51,12 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
   const [topicFormData, setTopicFormData] = useState({ name: '', description: '' })
   const [subtopicFormData, setSubtopicFormData] = useState({ name: '', description: '' })
   const [paperFormData, setPaperFormData] = useState({
-    name: '',
+    paperName: '',
     paperType: 'topical',
     topicId: '',
     pdfUrl: '',
+    questionStart: '',
+    questionEnd: '',
   })
 
   useEffect(() => {
@@ -136,7 +138,7 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
       })
       if (response.ok) {
         setShowPaperForm(false)
-        setPaperFormData({ name: '', paperType: 'topical', topicId: '', pdfUrl: '' })
+        setPaperFormData({ paperName: '', paperType: 'topical', topicId: '', pdfUrl: '', questionStart: '', questionEnd: '' })
         fetchSubject()
       }
     } catch (error) {
@@ -256,8 +258,8 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
                 <label className="block text-sm font-medium text-gray-700 mb-1">Paper Name</label>
                 <input
                   type="text"
-                  value={paperFormData.name}
-                  onChange={(e) => setPaperFormData({ ...paperFormData, name: e.target.value })}
+                  value={paperFormData.paperName}
+                  onChange={(e) => setPaperFormData({ ...paperFormData, paperName: e.target.value })}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="e.g., May/June 2023 Paper 1"
                   required
@@ -299,6 +301,30 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
                   className="w-full border border-gray-300 rounded-lg px-3 py-2"
                   placeholder="https://example.com/paper.pdf"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Question Start</label>
+                  <input
+                    type="text"
+                    value={paperFormData.questionStart}
+                    onChange={(e) => setPaperFormData({ ...paperFormData, questionStart: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="e.g., 1 or 5a"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Question End</label>
+                  <input
+                    type="text"
+                    value={paperFormData.questionEnd}
+                    onChange={(e) => setPaperFormData({ ...paperFormData, questionEnd: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    placeholder="e.g., 15 or 8c"
+                    required
+                  />
+                </div>
               </div>
               <div className="flex gap-2">
                 <button
