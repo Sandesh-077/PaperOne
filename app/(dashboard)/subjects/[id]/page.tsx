@@ -72,7 +72,7 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subjectId: resolvedParams.id,
+          subjectId: params.id,
           ...topicFormData
         })
       })
