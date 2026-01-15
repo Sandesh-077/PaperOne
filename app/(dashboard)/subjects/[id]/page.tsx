@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import { use } from 'react'
 
 interface SubjectDetails {
   id: string
@@ -32,8 +31,7 @@ interface SubjectDetails {
   }>
 }
 
-export default function SubjectDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
+export default function SubjectDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const { status } = useSession()
   const [subject, setSubject] = useState<SubjectDetails | null>(null)
@@ -54,7 +52,7 @@ export default function SubjectDetailsPage({ params }: { params: Promise<{ id: s
 
   const fetchSubject = async () => {
     try {
-      const response = await fetch(`/api/subjects/${resolvedParams.id}`)
+      const response = await fetch(`/api/subjects/${params.id}`)
       if (response.ok) {
         const data = await response.json()
         setSubject(data)
