@@ -31,11 +31,9 @@ export async function POST(request: Request) {
   const learningSession = await prisma.learningSession.create({
     data: {
       projectId,
-      unitsCompleted: parseInt(unitsCompleted),
       unitCovered,
       duration,
       progress,
-      notes,
     },
   })
 
