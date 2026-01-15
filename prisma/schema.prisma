@@ -21,6 +21,8 @@ model User {
   essays       Essay[]
   errors       Error[]
   studySessions StudySession[]
+  subjects     Subject[]
+  satSessions  SATSession[]
 }
 
 model GrammarRule {
@@ -96,6 +98,150 @@ model StudySession {
   date      DateTime @default(now())
   duration  Int?     // in minutes
   activities String[] // e.g., ["grammar", "vocabulary", "essay"]
+
+  @@index([userId])
+  @@index([date])
+}
+
+// Subject tracking system for A-Level, SAT, and Extra Learning
+model Subject {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   // e.g., "Physics AS", "Chemistry A2", "SAT Math"
+  type        String   // "alevel" | "sat" | "extra"
+  level       String?  // "AS" | "A2" | "Paper 3" | "Paper 4" (for A-Level)
+  color       String?  // For UI display
+  icon        String?  // For UI display
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  topics      Topic[]
+  practicePapers PracticePaper[]
+  notes       Note[]
+
+  @@index([userId])
+}
+
+// Topics within a subject (e.g., "Mechanics", "Organic Chemistry")
+model Topic {
+  id          String   @id @default(cuid())
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  order       Int      @default(0)
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subtopics   Subtopic[]
+  revisions   Revision[]
+  practicePapers PracticePaper[]
+  notes       Note[]
+
+  @@index([subjectId])
+}
+
+// Subtopics within a topic for granular tracking
+model Subtopic {
+  id          String   @id @default(cuid())
+  topicId     String
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  order       Int      @default(0)
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  notes       Note[]
+
+  @@index([topicId])
+}
+
+// Practice paper tracking with question ranges
+model PracticePaper {
+  id              String   @id @default(cuid())
+  subjectId       String
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId         String?
+  topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  paperName       String   // e.g., "2023 May/June Paper 1"
+  questionStart   String   // e.g., "1" or "5a"
+  questionEnd     String   // e.g., "15" or "8c"
+  completed       Boolean  @default(false)
+  score           Int?
+  totalMarks      Int?
+  notes           String?  @db.Text
+  reminderDate    DateTime? // When to remind for next practice
+  reminderDays    Int?     // Days after which to remind (for recalculation)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([topicId])
+  @@index([reminderDate])
+}
+
+// Spaced repetition system based on forgetting curve
+model Revision {
+  id          String   @id @default(cuid())
+  topicId     String
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  scheduledFor DateTime
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  interval    Int      // Days: 1, 3, 7, 14, 30
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([topicId])
+  @@index([scheduledFor])
+}
+
+// Notes and file attachments for subjects/topics
+model Note {
+  id          String   @id @default(cuid())
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId     String?
+  topic       Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subtopicId  String?
+  subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
+  title       String
+  content     String?  @db.Text
+  fileUrl     String?  // URL to uploaded file (past paper PDF, etc.)
+  fileType    String?  // "pdf" | "image" | "video" | "link"
+  lastViewedAt DateTime?
+  lastPosition String? // For resuming reading (page number, timestamp, etc.)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([topicId])
+  @@index([subtopicId])
+}
+
+// SAT learning sessions with YouTube integration
+model SATSession {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  topic       String   // What you studied
+  source      String?  // "youtube" | "book" | "practice" | "other"
+  youtubeUrl  String?  // Full YouTube URL
+  videoId     String?  // Extracted video ID for embedding
+  timestamp   Int?     // Seconds where you stopped
+  duration    Int?     // Total study time in minutes
+  notes       String?  @db.Text
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([userId])
   @@index([date])
