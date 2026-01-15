@@ -31,6 +31,9 @@ export async function GET(
         },
         orderBy: { order: 'asc' },
       },
+      practicePapers: {
+        orderBy: { createdAt: 'desc' },
+      },
     },
   })
 

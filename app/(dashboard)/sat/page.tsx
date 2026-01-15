@@ -167,8 +167,8 @@ export default function SATPage() {
   };
 
   const getResumeTime = (timestamp: number) => {
-    // Resume 20 seconds before saved timestamp
-    const resumeTime = Math.max(0, timestamp - 20);
+    // Resume 10 seconds before saved timestamp for context
+    const resumeTime = Math.max(0, timestamp - 10);
     return resumeTime;
   };
 
@@ -247,7 +247,7 @@ export default function SATPage() {
           </div>
           <p className="text-sm text-gray-600 mt-3">
             ⏰ Resuming from {Math.floor(currentTimestamp / 60)}:{(currentTimestamp % 60).toString().padStart(2, "0")} 
-            (starting 20 seconds earlier for context)
+            (starting 10 seconds earlier for context)
           </p>
         </div>
       )}
@@ -304,7 +304,7 @@ export default function SATPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Timestamp (seconds) - Optional
+                Timestamp (seconds) - Where you stopped
               </label>
               <input
                 type="number"
@@ -315,7 +315,7 @@ export default function SATPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
               <p className="text-sm text-gray-500 mt-1">
-                Where you stopped watching (will resume 20 seconds earlier)
+                Next time will resume 10 seconds earlier
               </p>
             </div>
 

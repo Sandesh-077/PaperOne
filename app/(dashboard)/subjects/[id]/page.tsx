@@ -30,6 +30,14 @@ interface SubjectDetails {
       notes: number
     }
   }>
+  practicePapers?: Array<{
+    id: string
+    name: string
+    paperType: string
+    topicId?: string
+    pdfUrl?: string
+    createdAt: string
+  }>
 }
 
 export default function SubjectDetailsPage({ params }: { params: { id: string } }) {
@@ -39,8 +47,15 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true)
   const [showTopicForm, setShowTopicForm] = useState(false)
   const [showSubtopicForm, setShowSubtopicForm] = useState<string | null>(null)
+  const [showPaperForm, setShowPaperForm] = useState(false)
   const [topicFormData, setTopicFormData] = useState({ name: '', description: '' })
   const [subtopicFormData, setSubtopicFormData] = useState({ name: '', description: '' })
+  const [paperFormData, setPaperFormData] = useState({
+    name: '',
+    paperType: 'topical',
+    topicId: '',
+    pdfUrl: '',
+  })
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -98,7 +113,29 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
         })
       })
       if (response.ok) {
-        setShowSubtopicForm(null)
+   
+
+  const handleAddPaper = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const response = await fetch('/api/practice-papers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subjectId: params.id,
+          ...paperFormData,
+          topicId: paperFormData.topicId || undefined,
+        })
+      })
+      if (response.ok) {
+        setShowPaperForm(false)
+        setPaperFormData({ name: '', paperType: 'topical', topicId: '', pdfUrl: '' })
+        fetchSubject()
+      }
+    } catch (error) {
+      console.error('Failed to add paper:', error)
+    }
+  }     setShowSubtopicForm(null)
         setSubtopicFormData({ name: '', description: '' })
         fetchSubject()
       }
@@ -159,13 +196,129 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
             </div>
           </div>
         </div>
-        <button
-          onClick={() => setShowTopicForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          + Add Topic
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowPaperForm(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm"
+          >
+            + Add Paper
+          </button>
+          <button
+            onClick={() => setShowTopicForm(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            + Add Topic
+          </button>
+        </div>
       </div>
+
+      {/* Practice Papers Section */}
+      {subject.practicePapers && subject.practicePapers.length > 0 && (
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+          <h2 className="text-xl font-semibold mb-4">Practice Papers</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subject.practicePapers.map((paper) => (
+              <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <h3 className="font-semibold text-gray-900 mb-2">{paper.name}</h3>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                    {paper.paperType}
+                  </span>
+                  {paper.topicId && (
+                    <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                      {subject.topics.find(t => t.id === paper.topicId)?.name || 'Topic'}
+                    </span>
+                  )}
+                </div>
+                {paper.pdfUrl && (
+                  <a
+                    href={paper.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    📄 Open PDF →
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add Practice Paper Modal */}
+      {showPaperForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Add Practice Paper</h2>
+            <form onSubmit={handleAddPaper} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Paper Name</label>
+                <input
+                  type="text"
+                  value={paperFormData.name}
+                  onChange={(e) => setPaperFormData({ ...paperFormData, name: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="e.g., May/June 2023 Paper 1"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Paper Type</label>
+                  <select
+                    value={paperFormData.paperType}
+                    onChange={(e) => setPaperFormData({ ...paperFormData, paperType: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  >
+                    <option value="full">Full Paper</option>
+                    <option value="topical">Topical</option>
+                    <option value="printed">Printed/Physical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Topic (optional)</label>
+                  <select
+                    value={paperFormData.topicId}
+                    onChange={(e) => setPaperFormData({ ...paperFormData, topicId: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  >
+                    <option value="">All Topics</option>
+                    {subject.topics.map((topic) => (
+                      <option key={topic.id} value={topic.id}>{topic.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PDF URL (optional)</label>
+                <input
+                  type="url"
+                  value={paperFormData.pdfUrl}
+                  onChange={(e) => setPaperFormData({ ...paperFormData, pdfUrl: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="https://example.com/paper.pdf"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  Add Paper
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPaperForm(false)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Topic Modal */}
       {showTopicForm && (
