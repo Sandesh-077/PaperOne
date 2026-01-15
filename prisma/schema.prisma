@@ -1,0 +1,102 @@
+// This is your Prisma schema file
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  grammarRules GrammarRule[]
+  vocabulary   Vocabulary[]
+  essays       Essay[]
+  errors       Error[]
+  studySessions StudySession[]
+}
+
+model GrammarRule {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  explanation String   @db.Text
+  examples    String[] // Multiple example sentences
+  status      String   @default("needs_work") // "understood" or "needs_work"
+  learnedAt   DateTime?
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Vocabulary {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  word        String
+  definition  String   @db.Text
+  sentences   String[] // 1-2 self-written sentences
+  learned     Boolean  @default(false)
+  learnedAt   DateTime?
+  category    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Essay {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  topic       String?  // GP topic category
+  prompt      String?  @db.Text
+  content     String   @db.Text
+  wordCount   Int      @default(0)
+  grade       String?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Error {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category    String
+  description String   @db.Text
+  correction  String   @db.Text
+  context     String?  @db.Text
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime @default(now())
+  duration  Int?     // in minutes
+  activities String[] // e.g., ["grammar", "vocabulary", "essay"]
+
+  @@index([userId])
+  @@index([date])
+}
