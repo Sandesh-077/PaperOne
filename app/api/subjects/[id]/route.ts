@@ -32,6 +32,12 @@ export async function GET(
         orderBy: { order: 'asc' },
       },
       practicePapers: {
+        include: {
+          logs: {
+            orderBy: { date: 'desc' },
+            take: 5,
+          },
+        },
         orderBy: { createdAt: 'desc' },
       },
     },

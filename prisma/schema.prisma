@@ -186,9 +186,30 @@ model PracticePaper {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  logs            PracticePaperLog[] // Track multiple practice sessions
+
   @@index([subjectId])
   @@index([topicId])
   @@index([reminderDate])
+}
+
+// Track individual practice sessions for a paper
+model PracticePaperLog {
+  id              String        @id @default(cuid())
+  practicePaperId String
+  practicePaper   PracticePaper @relation(fields: [practicePaperId], references: [id], onDelete: Cascade)
+  questionStart   String        // Where you started this session
+  questionEnd     String        // Where you stopped this session
+  completed       Boolean       @default(false)
+  score           Int?
+  totalMarks      Int?
+  duration        Int?          // Minutes spent
+  notes           String?       @db.Text
+  date            DateTime      @default(now())
+  createdAt       DateTime      @default(now())
+
+  @@index([practicePaperId])
+  @@index([date])
 }
 
 // Spaced repetition system based on adaptive forgetting curve
@@ -297,14 +318,16 @@ model LearningProject {
 
 // Track individual learning sessions for progress
 model LearningSession {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     LearningProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  date        DateTime @default(now())
-  unitCovered String?  // What chapter/topic covered today
-  duration    Int?     // Minutes spent
-  progress    String?  // Notes on what was learned
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  projectId      String
+  project        LearningProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date           DateTime @default(now())
+  unitsCompleted Int      @default(0) // Number of units completed in this session
+  unitCovered    String?  // What chapter/topic covered today
+  duration       Int?     // Minutes spent
+  progress       String?  // Notes on what was learned (deprecated - use notes)
+  notes          String?  @db.Text // Session notes
+  createdAt      DateTime @default(now())
 
   @@index([projectId])
   @@index([date])

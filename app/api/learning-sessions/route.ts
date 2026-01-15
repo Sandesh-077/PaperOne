@@ -12,10 +12,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { projectId, unitCovered, duration, progress } = await request.json()
+  const { projectId, unitsCompleted, unitCovered, duration, progress, notes } = await request.json()
 
-  if (!projectId) {
-    return NextResponse.json({ error: 'Project ID is required' }, { status: 400 })
+  if (!projectId || !unitsCompleted) {
+    return NextResponse.json({ error: 'Project ID and units completed are required' }, { status: 400 })
   }
 
   // Verify project belongs to user
@@ -31,9 +31,11 @@ export async function POST(request: Request) {
   const learningSession = await prisma.learningSession.create({
     data: {
       projectId,
+      unitsCompleted: parseInt(unitsCompleted),
       unitCovered,
       duration,
       progress,
+      notes,
     },
   })
 
@@ -42,14 +44,17 @@ export async function POST(request: Request) {
   const lastStudied = project.lastStudied ? new Date(project.lastStudied) : new Date(project.createdAt)
   const daysDiff = Math.floor((today.getTime() - lastStudied.getTime()) / (1000 * 60 * 60 * 24))
   
-  // Update project: increment daysSpent if different day
+  // Update project: increment daysSpent if different day and increment completedUnits
   const daysSpentIncrement = daysDiff > 0 ? 1 : 0
+  const newCompletedUnits = project.completedUnits + parseInt(unitsCompleted)
 
   await prisma.learningProject.update({
     where: { id: projectId },
     data: {
       lastStudied: today,
       daysSpent: project.daysSpent + daysSpentIncrement,
+      completedUnits: newCompletedUnits,
+      status: project.totalUnits && newCompletedUnits >= project.totalUnits ? 'completed' : 'in_progress',
     },
   })
 

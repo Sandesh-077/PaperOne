@@ -35,6 +35,10 @@ export async function GET(request: Request) {
     include: {
       subject: true,
       topic: true,
+      logs: {
+        orderBy: { date: 'desc' },
+        take: 10,
+      },
     },
     orderBy: { createdAt: 'desc' },
   })
