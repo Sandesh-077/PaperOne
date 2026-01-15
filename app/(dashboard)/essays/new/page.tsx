@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function NewEssayPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [dailyTopic, setDailyTopic] = useState<{ category: string; prompt: string } | null>(null)
   const [formData, setFormData] = useState({
     title: '',
@@ -17,19 +18,31 @@ export default function NewEssayPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    // Fetch daily topic
-    fetch('/api/daily-topic')
-      .then(res => res.json())
-      .then(data => {
-        setDailyTopic(data)
-        setFormData(prev => ({
-          ...prev,
-          topic: data.category,
-          prompt: data.prompt
-        }))
-      })
-      .catch(console.error)
-  }, [])
+    // Check if topic was passed via URL
+    const topicParam = searchParams.get('topic')
+    const customParam = searchParams.get('custom')
+    
+    if (topicParam) {
+      setFormData(prev => ({
+        ...prev,
+        prompt: topicParam,
+        title: topicParam
+      }))
+    } else if (!customParam) {
+      // Fetch daily topic only if not custom
+      fetch('/api/daily-topic')
+        .then(res => res.json())
+        .then(data => {
+          setDailyTopic(data)
+          setFormData(prev => ({
+            ...prev,
+            topic: data.category,
+            prompt: data.prompt
+          }))
+        })
+        .catch(console.error)
+    }
+  }, [searchParams])
 
   const getNewTopic = async () => {
     try {

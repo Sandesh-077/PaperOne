@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { getDailyTopics } from '@/lib/essay-topics'
 
 interface Essay {
   id: string
@@ -21,12 +22,14 @@ export default function EssaysPage() {
   const { status } = useSession()
   const [essays, setEssays] = useState<Essay[]>([])
   const [loading, setLoading] = useState(true)
+  const [dailyTopics, setDailyTopics] = useState<[string, string]>(['', ''])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login')
     } else if (status === 'authenticated') {
       fetchEssays()
+      setDailyTopics(getDailyTopics())
     }
   }, [status, router])
 
@@ -70,7 +73,41 @@ export default function EssaysPage() {
           href="/essays/new"
           className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
         >
-          + Write Essay
+          + 
+
+      {/* Daily Topic Suggestions */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <span>📝</span>
+          Today's Writing Topics
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Link
+            href={`/essays/new?topic=${encodeURIComponent(dailyTopics[0])}`}
+            className="bg-white p-4 rounded-lg border border-purple-300 hover:border-purple-500 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-start justify-between">
+              <p className="text-gray-800 font-medium group-hover:text-purple-700">{dailyTopics[0]}</p>
+              <span className="text-purple-600 ml-2">→</span>
+            </div>
+          </Link>
+          <Link
+            href={`/essays/new?topic=${encodeURIComponent(dailyTopics[1])}`}
+            className="bg-white p-4 rounded-lg border border-blue-300 hover:border-blue-500 hover:shadow-md transition-all group"
+          >
+            <div className="flex items-start justify-between">
+              <p className="text-gray-800 font-medium group-hover:text-blue-700">{dailyTopics[1]}</p>
+              <span className="text-blue-600 ml-2">→</span>
+            </div>
+          </Link>
+        </div>
+        <Link
+          href="/essays/new?custom=true"
+          className="mt-4 block text-center text-purple-600 hover:text-purple-700 font-medium text-sm"
+        >
+          Or write on a custom topic →
+        </Link>
+      </div>Write Essay
         </Link>
       </div>
 
