@@ -44,31 +44,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { topic, source, youtubeUrl, timestamp, duration, notes, completed } = await request.json()
+  const { topicsCovered, duration, videoId, timestamp, notes } = await request.json()
 
-  if (!topic) {
+  if (!topicsCovered || !duration) {
     return NextResponse.json(
-      { error: 'Topic is required' },
+      { error: 'Topics covered and duration are required' },
       { status: 400 }
     )
-  }
-
-  let videoId = null
-  if (youtubeUrl && source === 'youtube') {
-    videoId = extractYouTubeId(youtubeUrl)
   }
 
   const satSession = await prisma.sATSession.create({
     data: {
       userId: session.user.id,
-      topic,
-      source: source || 'other',
-      youtubeUrl,
-      videoId,
-      timestamp: timestamp ?? 0,
+      topic: topicsCovered,
       duration,
-      notes,
-      completed: completed ?? false,
+      videoId: videoId || null,
+      timestamp: timestamp || null,
+      notes: notes || null,
+      source: videoId ? 'youtube' : 'other',
+      completed: false,
     },
   })
 

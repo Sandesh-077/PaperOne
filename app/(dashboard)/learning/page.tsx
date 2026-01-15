@@ -140,17 +140,38 @@ export default function LearningPage() {
 
   const getDaysAgo = (dateString: string | null) => {
     if (!dateString) return "Never";
-    const days = Math.floor((Date.now() - new Date(dateString).getTime()) / (1000 * 60 * 60 * 24));
-    if (days === 0) return "Today";
-    if (days === 1) return "Yesterday";
-    return `${days} days ago`;
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffDays === 0) {
+      if (diffHours === 0) return "Just now";
+      if (diffHours === 1) return "1 hour ago";
+      return `${diffHours} hours ago`;
+    }
+    if (diffDays === 1) return "Yesterday";
+    return `${diffDays} days ago`;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-GB", {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
       day: "numeric",
       month: "short",
       year: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -349,11 +370,11 @@ export default function LearningPage() {
                           className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm"
                         >
                           <div className="flex justify-between items-start">
-                            <div>
+                            <div className="flex-1">
                               <span className="font-medium text-gray-900">
                                 {session.unitsCompleted} {session.unitsCompleted === 1 ? "unit" : "units"}
                               </span>
-                              <span className="text-gray-600 ml-2">• {formatDate(session.date)}</span>
+                              <span className="text-gray-600 ml-2">• {formatDateTime(session.date)}</span>
                             </div>
                           </div>
                           {session.notes && (
