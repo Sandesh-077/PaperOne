@@ -23,6 +23,8 @@ model User {
   studySessions StudySession[]
   subjects     Subject[]
   satSessions  SATSession[]
+  exams        Exam[]
+  learningProjects LearningProject[]
 }
 
 model GrammarRule {
@@ -119,6 +121,7 @@ model Subject {
   topics      Topic[]
   practicePapers PracticePaper[]
   notes       Note[]
+  exams       Exam[]
 
   @@index([userId])
 }
@@ -162,7 +165,7 @@ model Subtopic {
   @@index([topicId])
 }
 
-// Practice paper tracking with question ranges
+// Practice paper tracking with question ranges and PDF uploads
 model PracticePaper {
   id              String   @id @default(cuid())
   subjectId       String
@@ -170,6 +173,8 @@ model PracticePaper {
   topicId         String?
   topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
   paperName       String   // e.g., "2023 May/June Paper 1"
+  paperType       String   @default("full") // "full" | "topical" | "printed"
+  pdfUrl          String?  // URL to uploaded PDF file
   questionStart   String   // e.g., "1" or "5a"
   questionEnd     String   // e.g., "15" or "8c"
   completed       Boolean  @default(false)
@@ -186,7 +191,7 @@ model PracticePaper {
   @@index([reminderDate])
 }
 
-// Spaced repetition system based on forgetting curve
+// Spaced repetition system based on adaptive forgetting curve
 model Revision {
   id          String   @id @default(cuid())
   topicId     String
@@ -194,7 +199,8 @@ model Revision {
   scheduledFor DateTime
   completed   Boolean  @default(false)
   completedAt DateTime?
-  interval    Int      // Days: 1, 3, 7, 14, 30
+  sessionNumber Int     @default(1) // 1st, 2nd, 3rd review session
+  interval    Int      // Days: Adaptive based on performance
   notes       String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -244,5 +250,62 @@ model SATSession {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+  @@index([date])
+}
+
+// Upcoming exam tracking with countdown
+model Exam {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name        String   // e.g., "Physics AS Paper 1"
+  examDate    DateTime
+  board       String?  // e.g., "Cambridge", "Edexcel"
+  notes       String?  @db.Text
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([examDate])
+}
+
+// Track learning new skills/topics with progress
+model LearningProject {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String   // e.g., "React Advanced Patterns"
+  category    String   // "programming" | "language" | "skill" | "other"
+  description String?  @db.Text
+  totalUnits  Int?     // Total chapters/modules/lessons
+  completedUnits Int   @default(0)
+  currentUnit String?  // Where you are now
+  daysSpent   Int      @default(0)
+  lastStudied DateTime?
+  status      String   @default("in_progress") // "not_started" | "in_progress" | "completed"
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sessions    LearningSession[]
+
+  @@index([userId])
+}
+
+// Track individual learning sessions for progress
+model LearningSession {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     LearningProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  unitCovered String?  // What chapter/topic covered today
+  duration    Int?     // Minutes spent
+  progress    String?  // Notes on what was learned
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
   @@index([date])
 }
