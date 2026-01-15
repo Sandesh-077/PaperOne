@@ -1,53 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
-
-interface Stats {
-  grammar: { total: number; understood: number; needsWork: number }
-  vocabulary: { total: number; learned: number; thisWeek: number }
-  essays: { total: number; wordCountTrend: Array<{ date: string; wordCount: number }> }
-  errors: { total: number; unresolved: number }
-  streak: { current: number; longest: number; totalDays: number; daysMissed: number }
-}
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { data: session, status } = useSession()
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-    } else if (status === 'authenticated') {
-      fetchStats()
-    }
-  }, [status, router])
+    // Redirect to the new enhanced dashboard
+    router.replace('/home')
+  }, [router])
 
-  const fetchStats = async () => {
-    try {
-      const response = await fetch('/api/stats')
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      }
-    } catch (error) {
-      console.error('Failed to fetch stats:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const logStudySession = async () => {
-    try {
-      await fetch('/api/study-sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ activities: ['general'], duration: 0 })
-      })
-      fetchStats()
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-pulse text-gray-500">Loading dashboard...</div>
+    </div>
+  )
+}
     } catch (error) {
       console.error('Failed to log session:', error)
     }

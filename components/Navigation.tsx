@@ -7,6 +7,10 @@ import { useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
+  { name: 'Subjects', href: '/subjects' },
+  { name: 'Exams', href: '/exams' },
+  { name: 'Learning', href: '/learning' },
+  { name: 'SAT', href: '/sat' },
   { name: 'Grammar', href: '/grammar' },
   { name: 'Vocabulary', href: '/vocabulary' },
   { name: 'Writing', href: '/essays' },
