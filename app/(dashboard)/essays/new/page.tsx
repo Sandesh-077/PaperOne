@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function NewEssayPage() {
+function NewEssayForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [dailyTopic, setDailyTopic] = useState<{ category: string; prompt: string } | null>(null)
@@ -188,5 +188,17 @@ export default function NewEssayPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+export default function NewEssayPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-500">Loading...</div>
+      </div>
+    }>
+      <NewEssayForm />
+    </Suspense>
   )
 }
