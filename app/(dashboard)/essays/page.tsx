@@ -79,7 +79,7 @@ export default function EssaysPage() {
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg p-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
           <span>📝</span>
-          Today's Writing Topics
+          Today&#39;s Writing Topics
         </h2>
         <div className="grid md:grid-cols-2 gap-4">
           <Link

@@ -113,7 +113,14 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
         })
       })
       if (response.ok) {
-   
+        setShowSubtopicForm(null)
+        setSubtopicFormData({ name: '', description: '' })
+        fetchSubject()
+      }
+    } catch (error) {
+      console.error('Failed to add subtopic:', error)
+    }
+  }
 
   const handleAddPaper = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -134,13 +141,6 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
       }
     } catch (error) {
       console.error('Failed to add paper:', error)
-    }
-  }     setShowSubtopicForm(null)
-        setSubtopicFormData({ name: '', description: '' })
-        fetchSubject()
-      }
-    } catch (error) {
-      console.error('Failed to add subtopic:', error)
     }
   }
 
