@@ -106,7 +106,7 @@ export async function GET() {
   }
 
   // Calculate word count trend
-  const wordCountTrend = essays.map((item) => ({
+  const wordCountTrend = essays.map((item: { wordCount: number; createdAt: Date }) => ({
     date: item.createdAt,
     wordCount: item.wordCount
   }))
