@@ -232,7 +232,7 @@ export default function SATPage() {
         </div>
 
         <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-6 shadow-lg">
-          <div className="text-sm font-medium mb-2">Today's Study Time</div>
+          <div className="text-sm font-medium mb-2">Today&apos;s Study Time</div>
           <div className="text-4xl font-bold mb-1">{todayHours}h ⏱️</div>
           <div className="text-sm opacity-90">{todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''} today</div>
         </div>
@@ -367,7 +367,7 @@ export default function SATPage() {
       {/* Today's Sessions */}
       {todaySessions.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Today's Sessions</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Today&apos;s Sessions</h2>
           <div className="space-y-3">
             {todaySessions.map((session) => (
               <div
