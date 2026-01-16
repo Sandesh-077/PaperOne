@@ -70,6 +70,7 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
     pdfUrl: '',
     questionStart: '',
     questionEnd: '',
+    totalQuestions: '',
   })
   const [logFormData, setLogFormData] = useState({
     questionStart: '',
@@ -156,11 +157,12 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
           subjectId: params.id,
           ...paperFormData,
           topicId: paperFormData.topicId || undefined,
+          totalQuestions: paperFormData.totalQuestions ? parseInt(paperFormData.totalQuestions) : undefined,
         })
       })
       if (response.ok) {
         setShowPaperForm(false)
-        setPaperFormData({ paperName: '', paperType: 'topical', topicId: '', pdfUrl: '', questionStart: '', questionEnd: '' })
+        setPaperFormData({ paperName: '', paperType: 'topical', topicId: '', pdfUrl: '', questionStart: '', questionEnd: '', totalQuestions: '' })
         fetchSubject()
       }
     } catch (error) {
@@ -509,6 +511,18 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
                     required
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Questions (optional)</label>
+                <input
+                  type="number"
+                  value={paperFormData.totalQuestions}
+                  onChange={(e) => setPaperFormData({ ...paperFormData, totalQuestions: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  placeholder="e.g., 20 (leave empty if undefined)"
+                  min="1"
+                />
+                <p className="text-sm text-gray-500 mt-1">If specified, paper will auto-complete when all questions are done</p>
               </div>
               <div className="flex gap-2">
                 <button

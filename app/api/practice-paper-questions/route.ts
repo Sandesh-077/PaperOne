@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
+// Get all tracked questions for a paper
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions)
   
@@ -29,14 +30,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const logs = await prisma.practicePaperLog.findMany({
+  const questions = await prisma.practicePaperQuestion.findMany({
     where: { practicePaperId },
-    orderBy: { date: 'desc' },
+    orderBy: { createdAt: 'desc' },
   })
 
-  return NextResponse.json(logs)
+  return NextResponse.json(questions)
 }
 
+// Add a question to track (redo/focus/later)
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
   
@@ -44,20 +46,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const {
-    practicePaperId,
-    questionStart,
-    questionEnd,
-    completed,
-    score,
-    totalMarks,
-    duration,
-    notes,
-  } = await request.json()
+  const { practicePaperId, questionNumber, status, notes } = await request.json()
 
-  if (!practicePaperId || !questionStart || !questionEnd) {
+  if (!practicePaperId || !questionNumber || !status) {
     return NextResponse.json(
-      { error: 'Practice paper ID, question start, and question end are required' },
+      { error: 'Practice paper ID, question number, and status are required' },
       { status: 400 }
     )
   }
@@ -65,56 +58,39 @@ export async function POST(request: Request) {
   // Verify paper belongs to user
   const paper = await prisma.practicePaper.findUnique({
     where: { id: practicePaperId },
-    include: { subject: true, logs: true },
+    include: { subject: true },
   })
 
   if (!paper || paper.subject.userId !== session.user.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Check if paper is already completed and not being reworked
-  if (paper.completed && !completed) {
-    return NextResponse.json(
-      { error: 'Paper already completed. Use rework option to add more logs.' },
-      { status: 400 }
-    )
-  }
-
-  // Auto-detect completion if totalQuestions is set
-  let isComplete = completed ?? false
-  if (paper.totalQuestions && questionEnd) {
-    // Extract numeric part from questionEnd
-    const endNum = parseInt(questionEnd.replace(/[^\d]/g, ''))
-    if (endNum >= paper.totalQuestions) {
-      isComplete = true
-    }
-  }
-
-  // Create the log
-  const log = await prisma.practicePaperLog.create({
-    data: {
+  // Check if question already exists
+  const existingQuestion = await prisma.practicePaperQuestion.findFirst({
+    where: {
       practicePaperId,
-      questionStart,
-      questionEnd,
-      completed: isComplete,
-      score,
-      totalMarks,
-      duration,
-      notes,
+      questionNumber,
     },
   })
 
-  // Update paper if this session completed it
-  if (isComplete) {
-    await prisma.practicePaper.update({
-      where: { id: practicePaperId },
+  let question
+  if (existingQuestion) {
+    // Update existing
+    question = await prisma.practicePaperQuestion.update({
+      where: { id: existingQuestion.id },
+      data: { status, notes },
+    })
+  } else {
+    // Create new
+    question = await prisma.practicePaperQuestion.create({
       data: {
-        completed: true,
-        score,
-        totalMarks,
+        practicePaperId,
+        questionNumber,
+        status,
+        notes,
       },
     })
   }
 
-  return NextResponse.json(log, { status: 201 })
+  return NextResponse.json(question, { status: 201 })
 }

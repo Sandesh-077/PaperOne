@@ -177,6 +177,7 @@ model PracticePaper {
   pdfUrl          String?  // URL to uploaded PDF file
   questionStart   String   // e.g., "1" or "5a"
   questionEnd     String   // e.g., "15" or "8c"
+  totalQuestions  Int?     // Total number of questions in paper (optional)
   completed       Boolean  @default(false)
   score           Int?
   totalMarks      Int?
@@ -187,6 +188,7 @@ model PracticePaper {
   updatedAt       DateTime @updatedAt
 
   logs            PracticePaperLog[] // Track multiple practice sessions
+  questions       PracticePaperQuestion[] // Track specific questions to redo/focus/do later
 
   @@index([subjectId])
   @@index([topicId])
@@ -210,6 +212,21 @@ model PracticePaperLog {
 
   @@index([practicePaperId])
   @@index([date])
+}
+
+// Track specific questions that need attention
+model PracticePaperQuestion {
+  id              String        @id @default(cuid())
+  practicePaperId String
+  practicePaper   PracticePaper @relation(fields: [practicePaperId], references: [id], onDelete: Cascade)
+  questionNumber  String        // e.g., "5", "7a", "10b"
+  status          String        @default("redo") // "redo" | "focus" | "later" | "completed"
+  notes           String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([practicePaperId])
+  @@index([status])
 }
 
 // Spaced repetition system based on adaptive forgetting curve
