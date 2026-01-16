@@ -66,6 +66,13 @@ export async function POST(request: Request) {
   const paper = await prisma.practicePaper.findUnique({
     where: { id: practicePaperId },
     include: { subject: true, logs: true },
+    select: {
+      id: true,
+      completed: true,
+      totalQuestions: true,
+      subject: true,
+      logs: true,
+    },
   })
 
   if (!paper || paper.subject.userId !== session.user.id) {

@@ -37,6 +37,9 @@ export async function GET(
             orderBy: { date: 'desc' },
             take: 5,
           },
+          questions: {
+            orderBy: { createdAt: 'desc' },
+          },
         },
         orderBy: { createdAt: 'desc' },
       },

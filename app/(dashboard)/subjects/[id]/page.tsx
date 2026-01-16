@@ -32,10 +32,15 @@ interface SubjectDetails {
   }>
   practicePapers?: Array<{
     id: string
+    paperName: string
     name: string
     paperType: string
     topicId?: string
     pdfUrl?: string
+    questionStart: string
+    questionEnd: string
+    totalQuestions?: number
+    completed: boolean
     createdAt: string
     logs?: Array<{
       id: string
@@ -47,6 +52,12 @@ interface SubjectDetails {
       duration?: number
       notes?: string
       date: string
+    }>
+    questions?: Array<{
+      id: string
+      questionNumber: string
+      status: string
+      notes?: string
     }>
   }>
 }
@@ -61,6 +72,12 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
   const [showPaperForm, setShowPaperForm] = useState(false)
   const [showLogForm, setShowLogForm] = useState<string | null>(null)
   const [expandedPaper, setExpandedPaper] = useState<string | null>(null)
+  const [showQuestionForm, setShowQuestionForm] = useState<string | null>(null)
+  const [questionFormData, setQuestionFormData] = useState({
+    questionNumber: '',
+    status: 'redo',
+    notes: '',
+  })
   const [topicFormData, setTopicFormData] = useState({ name: '', description: '' })
   const [subtopicFormData, setSubtopicFormData] = useState({ name: '', description: '' })
   const [paperFormData, setPaperFormData] = useState({
@@ -188,9 +205,76 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
         setShowLogForm(null)
         setLogFormData({ questionStart: '', questionEnd: '', completed: false, score: '', totalMarks: '', duration: '', notes: '' })
         fetchSubject()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to add log')
       }
     } catch (error) {
       console.error('Failed to add log:', error)
+    }
+  }
+
+  const handleReworkPaper = async (paperId: string) => {
+    try {
+      const response = await fetch(`/api/practice-papers/${paperId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: false })
+      })
+      if (response.ok) {
+        fetchSubject()
+      }
+    } catch (error) {
+      console.error('Failed to rework paper:', error)
+    }
+  }
+
+  const handleAddQuestion = async (e: React.FormEvent, paperId: string) => {
+    e.preventDefault()
+    try {
+      const response = await fetch('/api/practice-paper-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          practicePaperId: paperId,
+          ...questionFormData,
+        })
+      })
+      if (response.ok) {
+        setShowQuestionForm(null)
+        setQuestionFormData({ questionNumber: '', status: 'redo', notes: '' })
+        fetchSubject()
+      }
+    } catch (error) {
+      console.error('Failed to add question:', error)
+    }
+  }
+
+  const handleUpdateQuestionStatus = async (questionId: string, status: string) => {
+    try {
+      const response = await fetch(`/api/practice-paper-questions/${questionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+      if (response.ok) {
+        fetchSubject()
+      }
+    } catch (error) {
+      console.error('Failed to update question:', error)
+    }
+  }
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    try {
+      const response = await fetch(`/api/practice-paper-questions/${questionId}`, {
+        method: 'DELETE',
+      })
+      if (response.ok) {
+        fetchSubject()
+      }
+    } catch (error) {
+      console.error('Failed to delete question:', error)
     }
   }
 
@@ -266,60 +350,181 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
       {subject.practicePapers && subject.practicePapers.length > 0 && (
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <h2 className="text-xl font-semibold mb-4">Practice Papers</h2>
-          <div className="space-y-4">
-            {subject.practicePapers.map((paper: any) => (
-              <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 mb-2">{paper.name}</h3>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                        {paper.paperType}
-                      </span>
-                      {paper.topicId && (
-                        <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
-                          {subject.topics.find((t: any) => t.id === paper.topicId)?.name || 'Topic'}
-                        </span>
+          
+          {/* Full Papers Section (on top) */}
+          {subject.practicePapers.filter((p: any) => !p.topicId).length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">📋 Full Papers</h3>
+              <div className="space-y-4">
+                {subject.practicePapers.filter((p: any) => !p.topicId).map((paper: any) => (
+                  <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900 mb-2">{paper.name}</h3>
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                            {paper.paperType}
+                          </span>
+                          {paper.completed && (
+                            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-semibold">
+                              ✓ Completed
+                            </span>
+                          )}
+                          {paper.totalQuestions && (
+                            <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                              {paper.totalQuestions} Questions
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {paper.pdfUrl && (
+                        <a
+                          href={paper.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 whitespace-nowrap"
+                        >
+                          📄 PDF →
+                        </a>
                       )}
                     </div>
-                  </div>
-                  {paper.pdfUrl && (
-                    <a
-                      href={paper.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 whitespace-nowrap"
-                    >
-                      📄 PDF →
-                    </a>
-                  )}
-                </div>
 
-                {/* Last log info */}
-                {paper.logs && paper.logs.length > 0 && (
-                  <div className="bg-white rounded p-2 mb-2 text-sm text-gray-600">
-                    <strong>Last session:</strong> Questions {paper.logs[0].questionStart} - {paper.logs[0].questionEnd}
-                    {paper.logs[0].score && <span> • Score: {paper.logs[0].score}/{paper.logs[0].totalMarks}</span>}
-                  </div>
-                )}
+                    {/* Last log info */}
+                    {paper.logs && paper.logs.length > 0 && (
+                      <div className="bg-white rounded p-2 mb-2 text-sm text-gray-600">
+                        <strong>Last session:</strong> Questions {paper.logs[0].questionStart} - {paper.logs[0].questionEnd}
+                        {paper.logs[0].score && <span> • Score: {paper.logs[0].score}/{paper.logs[0].totalMarks}</span>}
+                      </div>
+                    )}
 
-                <div className="flex gap-2 mb-3">
-                  <button
-                    onClick={() => setShowLogForm(showLogForm === paper.id ? null : paper.id)}
-                    className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-                  >
-                    {showLogForm === paper.id ? 'Cancel' : '📝 Log Session'}
-                  </button>
-                  <button
-                    onClick={() => setExpandedPaper(expandedPaper === paper.id ? null : paper.id)}
-                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
-                  >
-                    {expandedPaper === paper.id ? 'Hide' : `View All (${paper.logs?.length || 0})`}
-                  </button>
-                </div>
+                    <div className="flex gap-2 mb-3 flex-wrap">
+                      {paper.completed ? (
+                        <button
+                          onClick={() => handleReworkPaper(paper.id)}
+                          className="px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                        >
+                          🔄 Rework Paper
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setShowLogForm(showLogForm === paper.id ? null : paper.id)}
+                          className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                          {showLogForm === paper.id ? 'Cancel' : '📝 Log Session'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setExpandedPaper(expandedPaper === paper.id ? null : paper.id)}
+                        className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                      >
+                        {expandedPaper === paper.id ? 'Hide' : `View All (${paper.logs?.length || 0})`}
+                      </button>
+                      <button
+                        onClick={() => setShowQuestionForm(showQuestionForm === paper.id ? null : paper.id)}
+                        className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                      >
+                        🎯 Track Question
+                      </button>
+                    </div>
 
-                {/* Log Form */}
-                {showLogForm === paper.id && (
+                    {/* Question Form */}
+                    {showQuestionForm === paper.id && (
+                      <form onSubmit={(e) => handleAddQuestion(e, paper.id)} className="bg-white rounded-lg p-4 border border-purple-300 mb-3 space-y-3">
+                        <h4 className="font-semibold text-gray-900">Track Question</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Question Number *</label>
+                            <input
+                              type="text"
+                              value={questionFormData.questionNumber}
+                              onChange={(e) => setQuestionFormData({ ...questionFormData, questionNumber: e.target.value })}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              placeholder="e.g., 5"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                            <select
+                              value={questionFormData.status}
+                              onChange={(e) => setQuestionFormData({ ...questionFormData, status: e.target.value })}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                            >
+                              <option value="redo">🔴 Redo</option>
+                              <option value="focus">🟡 Focus</option>
+                              <option value="later">🔵 Review Later</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                          <textarea
+                            value={questionFormData.notes}
+                            onChange={(e) => setQuestionFormData({ ...questionFormData, notes: e.target.value })}
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                            rows={2}
+                            placeholder="Why track this question?"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                        >
+                          Save Question
+                        </button>
+                      </form>
+                    )}
+
+                    {/* Tracked Questions */}
+                    {paper.questions && paper.questions.length > 0 && (
+                      <div className="bg-white rounded-lg p-3 border border-purple-300 mb-3">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-sm">Tracked Questions ({paper.questions.length})</h4>
+                        <div className="space-y-2">
+                          {paper.questions.map((q: any) => (
+                            <div key={q.id} className="bg-gray-50 rounded p-2 text-sm border border-gray-200 flex justify-between items-start">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-medium text-gray-900">Q{q.questionNumber}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded ${
+                                    q.status === 'redo' ? 'bg-red-100 text-red-700' :
+                                    q.status === 'focus' ? 'bg-yellow-100 text-yellow-700' :
+                                    q.status === 'later' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-green-100 text-green-700'
+                                  }`}>
+                                    {q.status === 'redo' ? '🔴 Redo' :
+                                     q.status === 'focus' ? '🟡 Focus' :
+                                     q.status === 'later' ? '🔵 Later' :
+                                     '✓ Done'}
+                                  </span>
+                                </div>
+                                {q.notes && <div className="text-gray-600 text-xs italic">{q.notes}</div>}
+                              </div>
+                              <div className="flex gap-1 ml-2">
+                                <button
+                                  onClick={() => handleUpdateQuestionStatus(q.id, 
+                                    q.status === 'redo' ? 'focus' : 
+                                    q.status === 'focus' ? 'later' : 
+                                    q.status === 'later' ? 'completed' : 'redo'
+                                  )}
+                                  className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                >
+                                  →
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteQuestion(q.id)}
+                                  className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Log Form */}
+                    {showLogForm === paper.id && (
                   <form onSubmit={(e) => handleAddLog(e, paper.id)} className="bg-white rounded-lg p-4 border border-green-300 mb-3 space-y-3">
                     <h4 className="font-semibold text-gray-900">Log Practice Session</h4>
                     <div className="grid grid-cols-2 gap-3">
@@ -431,6 +636,301 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
               </div>
             ))}
           </div>
+        </div>
+        )}
+          
+        {/* Topical Papers Section (organized by topics) */}
+        {subject.topics && subject.topics.map((topic: any) => {
+            const topicalPapers = subject.practicePapers?.filter((p: any) => p.topicId === topic.id) || [];
+            if (topicalPapers.length === 0) return null;
+
+            return (
+              <div key={topic.id} className="mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">📚 {topic.name}</h3>
+                <div className="space-y-4">
+                  {topicalPapers.map((paper: any) => (
+                    <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 mb-2">{paper.name}</h3>
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                              {paper.paperType}
+                            </span>
+                            {paper.completed && (
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-semibold">
+                                ✓ Completed
+                              </span>
+                            )}
+                            {paper.totalQuestions && (
+                              <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">
+                                {paper.totalQuestions} Questions
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        {paper.pdfUrl && (
+                          <a
+                            href={paper.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 whitespace-nowrap"
+                          >
+                            📄 PDF →
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Last log info */}
+                      {paper.logs && paper.logs.length > 0 && (
+                        <div className="bg-white rounded p-2 mb-2 text-sm text-gray-600">
+                          <strong>Last session:</strong> Questions {paper.logs[0].questionStart} - {paper.logs[0].questionEnd}
+                          {paper.logs[0].score && <span> • Score: {paper.logs[0].score}/{paper.logs[0].totalMarks}</span>}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 mb-3 flex-wrap">
+                        {paper.completed ? (
+                          <button
+                            onClick={() => handleReworkPaper(paper.id)}
+                            className="px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors text-sm font-medium"
+                          >
+                            🔄 Rework Paper
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setShowLogForm(showLogForm === paper.id ? null : paper.id)}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                          >
+                            {showLogForm === paper.id ? 'Cancel' : '📝 Log Session'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setExpandedPaper(expandedPaper === paper.id ? null : paper.id)}
+                          className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm"
+                        >
+                          {expandedPaper === paper.id ? 'Hide' : `View All (${paper.logs?.length || 0})`}
+                        </button>
+                        <button
+                          onClick={() => setShowQuestionForm(showQuestionForm === paper.id ? null : paper.id)}
+                          className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+                        >
+                          🎯 Track Question
+                        </button>
+                      </div>
+
+                      {/* Question Form */}
+                      {showQuestionForm === paper.id && (
+                        <form onSubmit={(e) => handleAddQuestion(e, paper.id)} className="bg-white rounded-lg p-4 border border-purple-300 mb-3 space-y-3">
+                          <h4 className="font-semibold text-gray-900">Track Question</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Question Number *</label>
+                              <input
+                                type="text"
+                                value={questionFormData.questionNumber}
+                                onChange={(e) => setQuestionFormData({ ...questionFormData, questionNumber: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="e.g., 5"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Status *</label>
+                              <select
+                                value={questionFormData.status}
+                                onChange={(e) => setQuestionFormData({ ...questionFormData, status: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              >
+                                <option value="redo">🔴 Redo</option>
+                                <option value="focus">🟡 Focus</option>
+                                <option value="later">🔵 Review Later</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                            <textarea
+                              value={questionFormData.notes}
+                              onChange={(e) => setQuestionFormData({ ...questionFormData, notes: e.target.value })}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              rows={2}
+                              placeholder="Why track this question?"
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            className="w-full bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition-colors font-medium"
+                          >
+                            Save Question
+                          </button>
+                        </form>
+                      )}
+
+                      {/* Tracked Questions */}
+                      {paper.questions && paper.questions.length > 0 && (
+                        <div className="bg-white rounded-lg p-3 border border-purple-300 mb-3">
+                          <h4 className="font-semibold text-gray-900 mb-2 text-sm">Tracked Questions ({paper.questions.length})</h4>
+                          <div className="space-y-2">
+                            {paper.questions.map((q: any) => (
+                              <div key={q.id} className="bg-gray-50 rounded p-2 text-sm border border-gray-200 flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-gray-900">Q{q.questionNumber}</span>
+                                    <span className={`text-xs px-2 py-0.5 rounded ${
+                                      q.status === 'redo' ? 'bg-red-100 text-red-700' :
+                                      q.status === 'focus' ? 'bg-yellow-100 text-yellow-700' :
+                                      q.status === 'later' ? 'bg-blue-100 text-blue-700' :
+                                      'bg-green-100 text-green-700'
+                                    }`}>
+                                      {q.status === 'redo' ? '🔴 Redo' :
+                                       q.status === 'focus' ? '🟡 Focus' :
+                                       q.status === 'later' ? '🔵 Later' :
+                                       '✓ Done'}
+                                    </span>
+                                  </div>
+                                  {q.notes && <div className="text-gray-600 text-xs italic">{q.notes}</div>}
+                                </div>
+                                <div className="flex gap-1 ml-2">
+                                  <button
+                                    onClick={() => handleUpdateQuestionStatus(q.id, 
+                                      q.status === 'redo' ? 'focus' : 
+                                      q.status === 'focus' ? 'later' : 
+                                      q.status === 'later' ? 'completed' : 'redo'
+                                    )}
+                                    className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                                  >
+                                    →
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteQuestion(q.id)}
+                                    className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Log Form */}
+                      {showLogForm === paper.id && (
+                        <form onSubmit={(e) => handleAddLog(e, paper.id)} className="bg-white rounded-lg p-4 border border-green-300 mb-3 space-y-3">
+                          <h4 className="font-semibold text-gray-900">Log Practice Session</h4>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Question Start *</label>
+                              <input
+                                type="text"
+                                value={logFormData.questionStart}
+                                onChange={(e) => setLogFormData({ ...logFormData, questionStart: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="e.g., 5"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Question End *</label>
+                              <input
+                                type="text"
+                                value={logFormData.questionEnd}
+                                onChange={(e) => setLogFormData({ ...logFormData, questionEnd: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="e.g., 10"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Score</label>
+                              <input
+                                type="number"
+                                value={logFormData.score}
+                                onChange={(e) => setLogFormData({ ...logFormData, score: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="e.g., 35"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
+                              <input
+                                type="number"
+                                value={logFormData.totalMarks}
+                                onChange={(e) => setLogFormData({ ...logFormData, totalMarks: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="e.g., 40"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-1">Duration (mins)</label>
+                              <input
+                                type="number"
+                                value={logFormData.duration}
+                                onChange={(e) => setLogFormData({ ...logFormData, duration: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                placeholder="e.g., 45"
+                              />
+                            </div>
+                            <div className="flex items-center">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={logFormData.completed}
+                                  onChange={(e) => setLogFormData({ ...logFormData, completed: e.target.checked })}
+                                  className="w-4 h-4"
+                                />
+                                <span className="text-sm font-medium text-gray-700">Completed</span>
+                              </label>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                            <textarea
+                              value={logFormData.notes}
+                              onChange={(e) => setLogFormData({ ...logFormData, notes: e.target.value })}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                              rows={2}
+                              placeholder="Any notes about this session..."
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                          >
+                            Save Log
+                          </button>
+                        </form>
+                      )}
+
+                      {/* All Logs */}
+                      {expandedPaper === paper.id && paper.logs && paper.logs.length > 0 && (
+                        <div className="bg-white rounded-lg p-3 border border-gray-300">
+                          <h4 className="font-semibold text-gray-900 mb-2 text-sm">All Sessions</h4>
+                          <div className="space-y-2">
+                            {paper.logs.map((log: any) => (
+                              <div key={log.id} className="bg-gray-50 rounded p-3 text-sm border border-gray-200">
+                                <div className="flex justify-between items-start mb-1">
+                                  <div>
+                                    <span className="font-medium text-gray-900">Q{log.questionStart} - Q{log.questionEnd}</span>
+                                    {log.score && <span className="ml-2 text-green-700">({log.score}/{log.totalMarks})</span>}
+                                    {log.completed && <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">✓ Completed</span>}
+                                  </div>
+                                  <span className="text-xs text-gray-500">{new Date(log.date).toLocaleDateString()}</span>
+                                </div>
+                                {log.duration && <div className="text-gray-600">⏱️ {log.duration} mins</div>}
+                                {log.notes && <div className="text-gray-600 italic mt-1">&ldquo;{log.notes}&rdquo;</div>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
