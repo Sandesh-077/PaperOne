@@ -11,6 +11,15 @@ A systematic English General Paper (EGP) exam preparation web application built 
 - **Essay Practice** - Write, store, and review essays with word count tracking
 - **Error Log** - Document mistakes and corrections to avoid repeating them
 
+### 📝 Practice Paper System
+
+- **Practice Paper Tracking** - Add, organize, and log practice papers by topic or as full papers
+- **Auto-completion** - Papers are auto-marked complete when all questions are logged
+- **Rework Functionality** - Reset completed papers to allow new attempts
+- **Question Tracking** - Mark individual questions as redo, focus, or review later
+- **Status Badges** - Visual indicators for tracked questions (redo/focus/later/completed)
+- **Comprehensive Logs** - View all practice sessions and progress
+
 ### 📊 Progress Tracking
 
 - **Study Streak System** - Track daily study consistency with streak counter
@@ -87,11 +96,32 @@ npm run dev
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser
 
+#### Database Reset (Development/Production)
+
+- **Reset all data for a user (recommended for production):**
+  - Call the API endpoint `/api/reset-user-data` (POST) while logged in. This deletes all your data but keeps your account.
+  - Example:
+    ```bash
+    curl -X POST https://your-app-url.vercel.app/api/reset-user-data
+    ```
+- **Reset the entire database (development only):**
+  - Run the script:
+    ```bash
+    npx tsx scripts/reset-db.ts
+    ```
+  - This deletes ALL users and data. Do not use in production!
+
 ## Database Schema
 
 The application uses the following main models:
 
 - **User** - User accounts with authentication
+- **Subject** - Main subject (e.g., Physics, SAT Math)
+- **Topic** - Topics within a subject
+- **Subtopic** - Subtopics for granular tracking
+- **PracticePaper** - Practice papers (full or topical)
+- **PracticePaperLog** - Individual practice sessions for a paper
+- **PracticePaperQuestion** - Tracked questions (redo/focus/later/completed)
 - **GrammarRule** - Grammar rules with learning status
 - **Vocabulary** - Vocabulary entries with example sentences
 - **Essay** - Written essays with metadata
