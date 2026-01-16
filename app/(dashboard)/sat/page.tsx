@@ -14,8 +14,10 @@ type SATSession = {
 
 export default function SATPage() {
   const [sessions, setSessions] = useState<SATSession[]>([]);
+  const [todaySessions, setTodaySessions] = useState<SATSession[]>([]);
   const [streak, setStreak] = useState(0);
   const [totalHours, setTotalHours] = useState(0);
+  const [todayHours, setTodayHours] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [currentVideo, setCurrentVideo] = useState<string | null>(null);
@@ -42,6 +44,24 @@ export default function SATPage() {
         const data = await res.json();
         setSessions(data);
         
+        // Calculate accurate total hours
+        const totalMinutes = data.reduce((acc: number, s: SATSession) => acc + s.duration, 0);
+        setTotalHours(Math.round((totalMinutes / 60) * 10) / 10);
+        
+        // Get today's sessions
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayData = data.filter((s: SATSession) => {
+          const sessionDate = new Date(s.date);
+          sessionDate.setHours(0, 0, 0, 0);
+          return sessionDate.getTime() === today.getTime();
+        });
+        setTodaySessions(todayData);
+        
+        // Calculate today's hours
+        const todayMinutes = todayData.reduce((acc: number, s: SATSession) => acc + s.duration, 0);
+        setTodayHours(Math.round((todayMinutes / 60) * 10) / 10);
+        
         // Load last video if available
         const lastSession = data[0];
         if (lastSession?.videoId) {
@@ -61,11 +81,7 @@ export default function SATPage() {
       const res = await fetch("/api/dashboard");
       if (res.ok) {
         const data = await res.json();
-        setStreak(data.streaks.satStreak);
-        
-        // Calculate total hours from sessions
-        const hours = sessions.reduce((acc, s) => acc + s.duration, 0) / 60;
-        setTotalHours(Math.round(hours * 10) / 10);
+        setStreak(data.streaks.sat || 0);
       }
     } catch (error) {
       console.error("Failed to fetch stats:", error);
@@ -208,17 +224,23 @@ export default function SATPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-lg p-6 shadow-lg">
           <div className="text-sm font-medium mb-2">SAT Study Streak</div>
           <div className="text-4xl font-bold mb-1">{streak} days 🔥</div>
           <div className="text-sm opacity-90">Keep going!</div>
         </div>
 
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-6 shadow-lg">
+          <div className="text-sm font-medium mb-2">Today's Study Time</div>
+          <div className="text-4xl font-bold mb-1">{todayHours}h ⏱️</div>
+          <div className="text-sm opacity-90">{todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''} today</div>
+        </div>
+
         <div className="bg-gradient-to-br from-blue-500 to-cyan-600 text-white rounded-lg p-6 shadow-lg">
           <div className="text-sm font-medium mb-2">Total Study Time</div>
-          <div className="text-4xl font-bold mb-1">{totalHours} hours ⏱️</div>
-          <div className="text-sm opacity-90">{sessions.length} sessions completed</div>
+          <div className="text-4xl font-bold mb-1">{totalHours}h 📊</div>
+          <div className="text-sm opacity-90">{sessions.length} total session{sessions.length !== 1 ? 's' : ''}</div>
         </div>
       </div>
 
@@ -342,10 +364,75 @@ export default function SATPage() {
         </div>
       )}
 
+      {/* Today's Sessions */}
+      {todaySessions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Today's Sessions</h2>
+          <div className="space-y-3">
+            {todaySessions.map((session) => (
+              <div
+                key={session.id}
+                className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-indigo-200 rounded-lg p-4 shadow-sm"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-semibold text-indigo-900 text-lg">{session.topicsCovered}</span>
+                      <span className="text-sm text-gray-700">• {formatDuration(session.duration)}</span>
+                      <span className="text-sm text-gray-600">• {formatDate(session.date)}</span>
+                    </div>
+                    
+                    {session.videoId && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-sm text-gray-700">🎥 Video:</span>
+                        <a
+                          href={`https://www.youtube.com/watch?v=${session.videoId}${session.timestamp ? `&t=${getResumeTime(session.timestamp)}s` : ""}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                        >
+                          Watch on YouTube
+                        </a>
+                        {session.timestamp && (
+                          <span className="text-xs text-gray-600">
+                            (from {Math.floor(session.timestamp / 60)}:{(session.timestamp % 60).toString().padStart(2, "0")})
+                          </span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setCurrentVideo(session.videoId);
+                            setCurrentTimestamp(session.timestamp || 0);
+                          }}
+                          className="text-sm text-indigo-600 hover:text-indigo-700 font-medium ml-2"
+                        >
+                          ▶ Play above
+                        </button>
+                      </div>
+                    )}
+                    
+                    {session.notes && (
+                      <p className="text-sm text-gray-700 italic mt-2">&ldquo;{session.notes}&rdquo;</p>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={() => handleDeleteSession(session.id)}
+                    className="text-red-600 hover:text-red-800 hover:bg-red-100 p-2 rounded transition-colors"
+                    title="Delete session"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Session History */}
       {sessions.length > 0 ? (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Study History</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">All Study History</h2>
           <div className="space-y-3">
             {sessions.map((session) => (
               <div
