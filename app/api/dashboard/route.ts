@@ -93,16 +93,31 @@ export async function GET() {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    for (const session of sessions) {
-      const sessionDate = new Date(session.date)
-      sessionDate.setHours(0, 0, 0, 0)
+    // Get unique dates
+    const uniqueDates = [...new Set(sessions.map(s => {
+      const d = new Date(s.date)
+      d.setHours(0, 0, 0, 0)
+      return d.getTime()
+    }))].sort((a, b) => b - a) // Sort descending (most recent first)
 
-      const daysDiff = Math.floor(
-        (today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24)
-      )
+    if (uniqueDates.length === 0) return 0
 
-      if (daysDiff === streak || daysDiff === streak + 1) {
-        streak = daysDiff + 1
+    // Check if there's activity today or yesterday
+    const mostRecentDate = new Date(uniqueDates[0])
+    const daysSinceRecent = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    // If no activity today or yesterday, streak is broken
+    if (daysSinceRecent > 1) return 0
+
+    // Count consecutive days
+    streak = 1
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const currentDate = new Date(uniqueDates[i])
+      const prevDate = new Date(uniqueDates[i - 1])
+      const daysDiff = Math.floor((prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
+      
+      if (daysDiff === 1) {
+        streak++
       } else {
         break
       }

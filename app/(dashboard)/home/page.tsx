@@ -53,6 +53,7 @@ export default function EnhancedDashboardPage() {
   const { data: session, status } = useSession()
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activityCalendar, setActivityCalendar] = useState<Array<{ date: string; activities: string[] }>>([])
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -64,15 +65,39 @@ export default function EnhancedDashboardPage() {
 
   const fetchDashboard = async () => {
     try {
-      const response = await fetch('/api/dashboard')
-      if (response.ok) {
-        const data = await response.json()
+      const [dashResponse, calendarResponse] = await Promise.all([
+        fetch('/api/dashboard'),
+        fetch('/api/activity-calendar'),
+      ])
+      
+      if (dashResponse.ok) {
+        const data = await dashResponse.json()
         setDashboardData(data)
+      }
+      
+      if (calendarResponse.ok) {
+        const calData = await calendarResponse.json()
+        setActivityCalendar(calData)
       }
     } catch (error) {
       console.error('Failed to fetch dashboard:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCompleteRevision = async (revisionId: string) => {
+    try {
+      const response = await fetch(`/api/revisions/${revisionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: true }),
+      })
+      if (response.ok) {
+        fetchDashboard()
+      }
+    } catch (error) {
+      console.error('Failed to complete revision:', error)
     }
   }
 
@@ -154,6 +179,58 @@ export default function EnhancedDashboardPage() {
         </div>
       )}
 
+      {/* Activity Calendar */}
+      {activityCalendar.length > 0 && (
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
+          <h2 className="text-xl font-bold text-gray-900 mb-4">📅 Activity Calendar</h2>
+          <div className="grid grid-cols-7 gap-2">
+            {activityCalendar.slice(0, 35).map((day) => {
+              const date = new Date(day.date)
+              const activityIcons: { [key: string]: string } = {
+                sat: '📝',
+                vocabulary: '📚',
+                grammar: '✍️',
+                essay: '📄',
+                learning: '🚀',
+                study: '📖',
+                error: '❌',
+              }
+              
+              return (
+                <div
+                  key={day.date}
+                  className={`p-2 rounded-lg border ${
+                    day.activities.length > 0
+                      ? 'bg-green-50 border-green-300'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}
+                  title={day.activities.join(', ')}
+                >
+                  <div className="text-xs text-gray-600 text-center mb-1">
+                    {date.getDate()}
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-0.5">
+                    {day.activities.slice(0, 3).map((activity, idx) => (
+                      <span key={idx} className="text-xs">
+                        {activityIcons[activity] || '•'}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3 text-xs text-gray-600">
+            <span>📝 SAT</span>
+            <span>📚 Vocab</span>
+            <span>✍️ Grammar</span>
+            <span>📄 Essay</span>
+            <span>🚀 Learning</span>
+            <span>📖 Study</span>
+          </div>
+        </div>
+      )}
+
       {/* Pending Revisions */}
       {pendingRevisions.length > 0 && (
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
@@ -161,12 +238,20 @@ export default function EnhancedDashboardPage() {
           <div className="space-y-3">
             {pendingRevisions.map(revision => (
               <div key={revision.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
-                <div>
+                <div className="flex-1">
                   <p className="font-medium text-gray-900">{revision.topic.name}</p>
                   <p className="text-sm text-gray-600">{revision.topic.subject.name} • Session {revision.sessionNumber}</p>
                 </div>
-                <div className="text-sm text-orange-600 font-medium">
-                  {new Date(revision.scheduledFor).toLocaleDateString()}
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-orange-600 font-medium">
+                    {new Date(revision.scheduledFor).toLocaleDateString()}
+                  </div>
+                  <button
+                    onClick={() => handleCompleteRevision(revision.id)}
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                  >
+                    ✓ Complete
+                  </button>
                 </div>
               </div>
             ))}
