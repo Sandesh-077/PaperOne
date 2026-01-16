@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -59,13 +59,12 @@ export async function POST(req: Request) {
       }
     })
     
+    // Delete all revisions for topics belonging to this user
     await prisma.revision.deleteMany({
       where: {
-        subtopic: {
-          topic: {
-            subject: {
-              userId
-            }
+        topic: {
+          subject: {
+            userId
           }
         }
       }
@@ -107,19 +106,16 @@ export async function POST(req: Request) {
       }
     })
     
-    await prisma.learningSession.deleteMany({
+    // If LearningSession has a userId, use it. Otherwise, skip or adjust as needed.
+    // await prisma.learningSession.deleteMany({ where: { userId } })
+    
+    await prisma.vocabulary.deleteMany({
       where: {
         userId
       }
     })
     
-    await prisma.vocabularyItem.deleteMany({
-      where: {
-        userId
-      }
-    })
-    
-    await prisma.grammarItem.deleteMany({
+    await prisma.grammarRule.deleteMany({
       where: {
         userId
       }
