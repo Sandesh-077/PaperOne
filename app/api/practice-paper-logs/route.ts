@@ -65,13 +65,12 @@ export async function POST(request: Request) {
   // Verify paper belongs to user
   const paper = await prisma.practicePaper.findUnique({
     where: { id: practicePaperId },
-    include: { subject: true, logs: true },
-    select: {
-      id: true,
-      completed: true,
-      totalQuestions: true,
-      subject: true,
-      logs: true,
+    include: { 
+      subject: true, 
+      logs: {
+        orderBy: { date: 'desc' },
+        take: 1
+      }
     },
   })
 
