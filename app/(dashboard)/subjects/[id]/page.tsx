@@ -360,7 +360,7 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
                   <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-2">{paper.name}</h3>
+                        <h3 className="font-semibold text-gray-900 mb-2">{paper.paperName}</h3>
                         <div className="flex flex-wrap gap-2 mb-2">
                           <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
                             {paper.paperType}
@@ -652,7 +652,7 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
                     <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-gray-900 mb-2">{paper.name}</h3>
+                          <h3 className="font-semibold text-gray-900 mb-2">{paper.paperName}</h3>
                           <div className="flex flex-wrap gap-2 mb-2">
                             <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
                               {paper.paperType}
