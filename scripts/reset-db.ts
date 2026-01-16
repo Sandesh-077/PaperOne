@@ -43,11 +43,11 @@ async function main() {
     console.log('Deleting LearningSessions...')
     await prisma.learningSession.deleteMany({})
     
-    console.log('Deleting VocabularyItems...')
-    await prisma.vocabularyItem.deleteMany({})
+    console.log('Deleting Vocabulary...')
+    await prisma.vocabulary.deleteMany({})
     
-    console.log('Deleting GrammarItems...')
-    await prisma.grammarItem.deleteMany({})
+    console.log('Deleting GrammarRules...')
+    await prisma.grammarRule.deleteMany({})
     
     console.log('Deleting Essays...')
     await prisma.essay.deleteMany({})
@@ -55,11 +55,11 @@ async function main() {
     console.log('Deleting Errors...')
     await prisma.error.deleteMany({})
     
-    console.log('Deleting Accounts...')
-    await prisma.account.deleteMany({})
+    //    console.log('Deleting Accounts...')
+    //    await prisma.account.deleteMany({})
     
-    console.log('Deleting Sessions...')
-    await prisma.session.deleteMany({})
+    //    console.log('Deleting Sessions...')
+    //    await prisma.session.deleteMany({})
     
     console.log('Deleting Users...')
     await prisma.user.deleteMany({})
