@@ -1098,7 +1098,10 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
         </div>
       ) : (
         <div className="space-y-4">
-          {subject.topics.map((topic) => (
+          {subject.topics
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((topic) => (
             <div key={topic.id} className="bg-white rounded-lg p-5 shadow-sm border border-gray-200">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-start gap-3 flex-1">
