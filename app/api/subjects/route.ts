@@ -31,7 +31,13 @@ export async function GET() {
     orderBy: { createdAt: 'desc' },
   })
 
-  return NextResponse.json(subjects)
+  // Sort topics alphabetically by name for each subject
+  const sortedSubjects = subjects.map(subject => ({
+    ...subject,
+    topics: subject.topics.slice().sort((a, b) => a.name.localeCompare(b.name)),
+  }))
+
+  return NextResponse.json(sortedSubjects)
 }
 
 export async function POST(request: Request) {
