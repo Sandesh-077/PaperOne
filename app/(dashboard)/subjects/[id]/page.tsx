@@ -642,11 +642,55 @@ export default function SubjectDetailsPage({ params }: { params: { id: string } 
         {/* Topical Papers Section (organized by topics) */}
         {subject.topics && subject.topics.map((topic: any) => {
             const topicalPapers = subject.practicePapers?.filter((p: any) => p.topicId === topic.id) || [];
+            // Notes state for PDF and video
+            const [pdfFile, setPdfFile] = useState<File | null>(null);
+            const [videoLink, setVideoLink] = useState('');
+            const [notes, setNotes] = useState<any[]>(topic.notes || []);
+
+            const handleUploadNote = async (e: React.FormEvent) => {
+              e.preventDefault();
+              const formData = new FormData();
+              if (pdfFile) formData.append('pdf', pdfFile);
+              if (videoLink) formData.append('video', videoLink);
+              formData.append('topicId', topic.id);
+              const res = await fetch('/api/topic-notes', { method: 'POST', body: formData });
+              if (res.ok) {
+                const data = await res.json();
+                setNotes([...notes, data]);
+                setPdfFile(null);
+                setVideoLink('');
+              }
+            };
+
             if (topicalPapers.length === 0) return null;
 
             return (
               <div key={topic.id} className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">📚 {topic.name}</h3>
+                {/* Notes Section */}
+                <div className="mb-4 p-4 bg-gray-50 rounded border border-gray-200">
+                  <h4 className="font-semibold mb-2">Notes</h4>
+                  <form onSubmit={handleUploadNote} className="flex gap-2 items-center mb-2">
+                    <input type="file" accept="application/pdf" onChange={e => setPdfFile(e.target.files?.[0] || null)} className="border rounded px-2 py-1" />
+                    <input type="url" placeholder="YouTube or video link" value={videoLink} onChange={e => setVideoLink(e.target.value)} className="border rounded px-2 py-1" />
+                    <button type="submit" className="bg-blue-600 text-white px-3 py-1 rounded">Add</button>
+                  </form>
+                  <div className="space-y-2">
+                    {notes.map((note, idx) => (
+                      <div key={idx} className="flex gap-2 items-center">
+                        {note.pdfUrl && (
+                          <a href={note.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">PDF Note</a>
+                        )}
+                        {note.video && (
+                          <a href={note.video} target="_blank" rel="noopener noreferrer" className="text-red-600 hover:underline">Video Link</a>
+                        )}
+                        {note.video && note.video.includes('youtube.com') && (
+                          <iframe width="320" height="180" src={`https://www.youtube.com/embed/${note.video.split('v=')[1]}`} frameBorder="0" allowFullScreen></iframe>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
                 <div className="space-y-4">
                   {topicalPapers.map((paper: any) => (
                     <div key={paper.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
