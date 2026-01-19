@@ -50,7 +50,11 @@ export function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <span className="hidden sm:block text-sm text-gray-700">{session?.user?.name || session?.user?.email}</span>
+            <Link href="/profile">
+              <span className="hidden sm:block text-sm text-gray-700 cursor-pointer hover:underline">
+                {session?.user?.name || session?.user?.email}
+              </span>
+            </Link>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="hidden sm:block text-sm text-gray-700 hover:text-gray-900"
