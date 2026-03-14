@@ -32,23 +32,25 @@ export async function GET(request: Request) {
   }
 
   // Fetch all study sessions in the date range
-  const studySessions = await prisma.studySession.findMany({
+  const studySessions = (await prisma.studySession.findMany({
     where: {
       userId: user.id,
       date: { gte: startDate, lte: endDate }
-    },
-    select: { date: true, taskType: true, subject: true }
-  })
+    }
+  })) as any[]
 
   // Map dates to activities
   const activityMap = new Map<string, Set<string>>()
 
-  studySessions.forEach(session => {
+  studySessions.forEach((session: any) => {
     const dateKey = session.date.toISOString().split('T')[0]
     if (!activityMap.has(dateKey)) {
       activityMap.set(dateKey, new Set())
     }
     if (session.taskType) activityMap.get(dateKey)!.add(session.taskType)
+    if (session.activities) {
+      session.activities.forEach((activity: string) => activityMap.get(dateKey)!.add(activity))
+    }
   })
 
   // Convert to array

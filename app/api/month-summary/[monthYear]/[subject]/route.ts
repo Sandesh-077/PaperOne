@@ -24,32 +24,22 @@ export async function GET(
     const endDate = new Date(year, month, 0)
 
     // Get all study sessions for this month and subject
-    const sessions = await prisma.studySession.findMany({
+    const sessions = (await prisma.studySession.findMany({
       where: {
         userId: user.id,
-        subject: subject,
         date: {
           gte: startDate,
           lte: endDate
         }
-      },
-      select: {
-        id: true,
-        date: true,
-        totalHours: true,
-        taskType: true,
-        accuracy: true,
-        deepFocusScore: true,
-        distractionCount: true
       }
-    })
+    })) as any[]
 
     // Calculate monthly metrics
-    const totalStudyHours = sessions.reduce((sum, s) => sum + (s.totalHours || 0), 0)
-    const totalPapers = sessions.filter(s => s.taskType === 'PastPaper').length
-    const validSessions = sessions.filter(s => s.accuracy !== null && s.accuracy !== undefined)
+    const totalStudyHours = sessions.reduce((sum: number, s: any) => sum + (s.totalHours || s.duration || 0), 0)
+    const totalPapers = sessions.filter((s: any) => (s.taskType === 'PastPaper' || s.activities?.includes?.('PastPaper'))).length
+    const validSessions = sessions.filter((s: any) => s.accuracy !== null && s.accuracy !== undefined)
     const averageAccuracy = validSessions.length > 0
-      ? validSessions.reduce((sum, s) => sum + (s.accuracy || 0), 0) / validSessions.length
+      ? validSessions.reduce((sum: number, s: any) => sum + (s.accuracy || 0), 0) / validSessions.length
       : 0
 
     // Calculate weekly ratings for this month
@@ -64,20 +54,20 @@ export async function GET(
         s => new Date(s.date) >= weekStart && new Date(s.date) <= weekEnd
       )
 
-      const weeklyHours = weekSessions.reduce((sum, s) => sum + (s.totalHours || 0), 0)
+      const weeklyHours = weekSessions.reduce((sum: number, s: any) => sum + (s.totalHours || s.duration || 0), 0)
       const weeklyAccuracy = weekSessions.length > 0
-        ? weekSessions.filter(s => s.accuracy).reduce((sum, s) => sum + (s.accuracy || 0), 0) / weekSessions.filter(s => s.accuracy).length
+        ? weekSessions.filter((s: any) => s.accuracy).reduce((sum: number, s: any) => sum + (s.accuracy || 0), 0) / weekSessions.filter((s: any) => s.accuracy).length
         : 0
       const weeklyFocus = weekSessions.length > 0
-        ? weekSessions.reduce((sum, s) => sum + (s.deepFocusScore || 5), 0) / weekSessions.length
+        ? weekSessions.reduce((sum: number, s: any) => sum + (s.deepFocusScore || 5), 0) / weekSessions.length
         : 0
 
       const studyScore = Math.min((weeklyHours / 35) * 25, 25)
       const accuracyScore = (weeklyAccuracy / 100) * 30
       const focusScore = (weeklyFocus / 10) * 20
-      const papersCount = weekSessions.filter(s => s.taskType === 'PastPaper').length
+      const papersCount = weekSessions.filter((s: any) => (s.taskType === 'PastPaper' || s.activities?.includes?.('PastPaper'))).length
       const papersScore = Math.min((papersCount / 5) * 15, 15)
-      const disturbances = weekSessions.reduce((sum, s) => sum + (s.distractionCount || 0), 0)
+      const disturbances = weekSessions.reduce((sum: number, s: any) => sum + (s.distractionCount || 0), 0)
       const distractionScore = Math.max(10 - (disturbances * 0.5), 0)
 
       const rating = Math.round(studyScore + accuracyScore + focusScore + papersScore + distractionScore)

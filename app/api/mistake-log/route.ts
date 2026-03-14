@@ -20,7 +20,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const mistake = await prisma.mistakeLog.create({
+    const prismaAny = prisma as any
+    const mistake = await prismaAny.mistakeLog.create({
       data: {
         userId: user.id,
         date: new Date(date),
@@ -51,7 +52,8 @@ export async function GET(req: Request) {
   const limit = parseInt(searchParams.get('limit') || '30')
 
   try {
-    const mistakes = await prisma.mistakeLog.findMany({
+    const prismaAny = prisma as any
+    const mistakes = await prismaAny.mistakeLog.findMany({
       where: { userId: user.id },
       orderBy: { date: 'desc' },
       take: limit
