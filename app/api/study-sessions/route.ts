@@ -54,13 +54,13 @@ export async function POST(req: Request) {
         }
       })) as any
     } catch (dbErr: any) {
-      // New columns don't exist yet - use old schema
-      console.log('New StudySession columns not available, using legacy schema:', dbErr.message)
+      // Migration not applied yet - use minimal legacy schema
+      // Only use columns that definitely exist in original database
+      console.log('Using minimal schema fallback:', dbErr.message)
       studySession = (await (prisma.studySession.create as any)({
         data: {
           userId: user.id,
           date: new Date(data.date),
-          totalHours: data.totalHours,
           subject: data.subject,
           topic: data.topic,
           taskType: data.taskType,
