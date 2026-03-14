@@ -7,11 +7,11 @@ import { useState } from 'react'
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
-  { name: 'Session Log', href: '/dashboard/session-log' },
-  { name: 'Topic Mastery', href: '/dashboard/topic-mastery' },
-  { name: 'Weekly Tracker', href: '/dashboard/weekly-tracker' },
-  { name: 'Mistake Log', href: '/dashboard/mistake-log' },
-  { name: 'Pomodoro', href: '/dashboard/pomodoro-routine' },
+  { name: 'Session Log', href: '/session-log' },
+  { name: 'Topic Mastery', href: '/topic-mastery' },
+  { name: 'Weekly Tracker', href: '/weekly-tracker' },
+  { name: 'Mistake Log', href: '/mistake-log' },
+  { name: 'Pomodoro', href: '/pomodoro-routine' },
 ]
 
 export function Navigation() {
