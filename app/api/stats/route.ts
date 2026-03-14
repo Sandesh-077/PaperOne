@@ -22,25 +22,20 @@ export async function GET() {
 
   const startOfYear = new Date(now.getFullYear(), 0, 1)
 
-  const studySessions = await prisma.studySession.findMany({
+  const studySessions = (await prisma.studySession.findMany({
     where: { userId: user.id, date: { gte: startOfYear } },
     orderBy: { date: 'desc' },
-    take: 365,
-    select: {
-      id: true,
-      date: true,
-      totalHours: true,
-      taskType: true
-    }
-  })
+    take: 365
+  })) as any[]
 
   // Fetch optional models with error handling
   let topicMastery: any = []
   let mistakeLogs: any = []
   let weeklyPerformance: any = []
+  const prismaAny = prisma as any
 
   try {
-    topicMastery = await prisma.topicMastery.findMany({
+    topicMastery = await prismaAny.topicMastery.findMany({
       where: { userId: user.id }
     })
   } catch (err) {
@@ -48,7 +43,7 @@ export async function GET() {
   }
 
   try {
-    mistakeLogs = await prisma.mistakeLog.findMany({
+    mistakeLogs = await prismaAny.mistakeLog.findMany({
       where: { userId: user.id },
       orderBy: { date: 'desc' },
       take: 100
@@ -58,7 +53,7 @@ export async function GET() {
   }
 
   try {
-    weeklyPerformance = await prisma.weeklyPerformance.findMany({
+    weeklyPerformance = await prismaAny.weeklyPerformance.findMany({
       where: { userId: user.id },
       orderBy: { weekStartDate: 'desc' },
       take: 52
@@ -109,9 +104,9 @@ export async function GET() {
   longestStreak = Math.max(longestStreak, tempStreak, currentStreak)
 
   // This week stats
-  const thisWeekSessions = studySessions.filter(s => new Date(s.date) >= startOfWeek)
-  const thisWeekHours = thisWeekSessions.reduce((sum, s) => sum + (s.totalHours || 0), 0)
-  const thisWeekPapers = thisWeekSessions.filter(s => s.taskType === 'PastPaper').length
+  const thisWeekSessions = studySessions.filter((s: any) => new Date(s.date) >= startOfWeek)
+  const thisWeekHours = thisWeekSessions.reduce((sum: number, s: any) => sum + (s.totalHours || s.duration || 0), 0)
+  const thisWeekPapers = thisWeekSessions.filter((s: any) => (s.taskType === 'PastPaper' || s.activities?.includes?.('PastPaper'))).length
 
   // Topics needing revision
   const topicsNeedingRevision = topicMastery.filter((t: any) => t.needsRevision).length

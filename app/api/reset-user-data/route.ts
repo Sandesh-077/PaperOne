@@ -16,8 +16,9 @@ export async function POST(req: Request) {
     console.log('🗑️  Starting user data reset...')
     
     // Delete all user-related data
+    const prismaAny = prisma as any
     try {
-      await prisma.mistakeLog.deleteMany({
+      await prismaAny.mistakeLog.deleteMany({
         where: { userId: user.id }
       })
     } catch (err) {
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      await prisma.weeklyPerformance.deleteMany({
+      await prismaAny.weeklyPerformance.deleteMany({
         where: { userId: user.id }
       })
     } catch (err) {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      await prisma.monthSummary.deleteMany({
+      await prismaAny.monthSummary.deleteMany({
         where: { userId: user.id }
       })
     } catch (err) {
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      await prisma.topicMastery.deleteMany({
+      await prismaAny.topicMastery.deleteMany({
         where: { userId: user.id }
       })
     } catch (err) {

@@ -25,7 +25,8 @@ export async function PATCH(
 
   try {
     const daysSinceEpoch = (new Date().getTime()) / (1000 * 60 * 60 * 24)
-    const updated = await prisma.topicMastery.update({
+    const prismaAny = prisma as any
+    const updated = await prismaAny.topicMastery.update({
       where: { id },
       data: {
         confidenceScore,

@@ -15,8 +15,8 @@ export async function POST(req: Request) {
   const data = await req.json()
 
   try {
-    // Create study session
-    const studySession = await prisma.studySession.create({
+    // Create study session - cast to any to handle schema variations
+    const studySession = (await (prisma.studySession.create as any)({
       data: {
         userId: user.id,
         date: new Date(data.date),
@@ -34,12 +34,13 @@ export async function POST(req: Request) {
         distractionCount: data.distractionCount,
         notes: data.notes
       }
-    })
+    })) as any
 
     // Update or create TopicMastery (optional - table may not exist in DB yet)
-    let topicMastery = null
+    let topicMastery: any = null
     try {
-      topicMastery = await prisma.topicMastery.upsert({
+      const prismaAny = prisma as any
+      topicMastery = await prismaAny.topicMastery.upsert({
         where: { userId_subject_topicName: { userId: user.id, subject: data.subject, topicName: data.topic } },
         update: {
           sessionsLogged: { increment: 1 },
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
       const daysSinceRevision = Math.floor((Date.now() - lastRevisedDate.getTime()) / (1000 * 60 * 60 * 24))
       const needsRevision = topicMastery.confidenceScore <= 3 || daysSinceRevision > 7
 
-      await prisma.topicMastery.update({
+      await prismaAny.topicMastery.update({
         where: { id: topicMastery.id },
         data: { needsRevision }
       })
