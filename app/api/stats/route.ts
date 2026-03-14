@@ -8,50 +8,43 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const session = await getServerSession(authOptions)
   
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Get current date info
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
+
   const now = new Date()
   const startOfWeek = new Date(now)
   startOfWeek.setDate(now.getDate() - now.getDay())
   startOfWeek.setHours(0, 0, 0, 0)
 
+  const startOfYear = new Date(now.getFullYear(), 0, 1)
+
   const [
-    grammarCount,
-    grammarUnderstood,
-    vocabCount,
-    learnedVocab,
-    vocabThisWeek,
-    essayCount,
-    essays,
-    errorCount,
-    unresolvedErrors,
-    studySessions
+    studySessions,
+    topicMastery,
+    mistakeLogs,
+    weeklyPerformance
   ] = await Promise.all([
-    prisma.grammarRule.count({ where: { userId: session.user.id } }),
-    prisma.grammarRule.count({ where: { userId: session.user.id, status: 'understood' } }),
-    prisma.vocabulary.count({ where: { userId: session.user.id } }),
-    prisma.vocabulary.count({ where: { userId: session.user.id, learned: true } }),
-    prisma.vocabulary.count({ 
-      where: { 
-        userId: session.user.id,
-        createdAt: { gte: startOfWeek }
-      } 
-    }),
-    prisma.essay.count({ where: { userId: session.user.id } }),
-    prisma.essay.findMany({
-      where: { userId: session.user.id },
-      select: { wordCount: true, createdAt: true },
-      orderBy: { createdAt: 'asc' }
-    }),
-    prisma.error.count({ where: { userId: session.user.id } }),
-    prisma.error.count({ where: { userId: session.user.id, resolved: false } }),
     prisma.studySession.findMany({
-      where: { userId: session.user.id },
+      where: { userId: user.id, date: { gte: startOfYear } },
       orderBy: { date: 'desc' },
       take: 365
+    }),
+    prisma.topicMastery.findMany({
+      where: { userId: user.id }
+    }),
+    prisma.mistakeLog.findMany({
+      where: { userId: user.id },
+      orderBy: { date: 'desc' },
+      take: 100
+    }),
+    prisma.weeklyPerformance.findMany({
+      where: { userId: user.id },
+      orderBy: { weekStartDate: 'desc' },
+      take: 52
     })
   ])
 
@@ -96,45 +89,38 @@ export async function GET() {
   
   longestStreak = Math.max(longestStreak, tempStreak, currentStreak)
 
-  // Calculate days missed
-  const totalDays = studySessions.length
-  let daysMissed = 0
-  if (studySessions.length > 0) {
-    const firstSession = studySessions[studySessions.length - 1].date
-    const daysSinceStart = Math.floor((now.getTime() - new Date(firstSession).getTime()) / (1000 * 60 * 60 * 24))
-    daysMissed = Math.max(0, daysSinceStart - totalDays + 1)
-  }
+  // This week stats
+  const thisWeekSessions = studySessions.filter(s => new Date(s.date) >= startOfWeek)
+  const thisWeekHours = thisWeekSessions.reduce((sum, s) => sum + (s.totalHours || 0), 0)
+  const thisWeekPapers = thisWeekSessions.filter(s => s.taskType === 'PastPaper').length
 
-  // Calculate word count trend
-  const wordCountTrend = essays.map((item: { wordCount: number; createdAt: Date }) => ({
-    date: item.createdAt,
-    wordCount: item.wordCount
+  // Topics needing revision
+  const topicsNeedingRevision = topicMastery.filter(t => t.needsRevision).length
+
+  // Recent mistakes
+  const recentMistakes = mistakeLogs.slice(0, 5).map(m => ({
+    date: m.date.toISOString().split('T')[0],
+    topic: m.topic,
+    type: m.mistakeType
   }))
 
   return NextResponse.json({
-    grammar: {
-      total: grammarCount,
-      understood: grammarUnderstood,
-      needsWork: grammarCount - grammarUnderstood
-    },
-    vocabulary: {
-      total: vocabCount,
-      learned: learnedVocab,
-      thisWeek: vocabThisWeek
-    },
-    essays: {
-      total: essayCount,
-      wordCountTrend
-    },
-    errors: {
-      total: errorCount,
-      unresolved: unresolvedErrors
-    },
-    streak: {
+    streaks: {
       current: currentStreak,
       longest: longestStreak,
-      totalDays: totalDays,
-      daysMissed: daysMissed
-    }
+      totalDays: new Set(studySessions.map(s => s.date.toISOString().split('T')[0])).size
+    },
+    thisWeek: {
+      totalHours: Math.round(thisWeekHours * 100) / 100,
+      pastPapers: thisWeekPapers,
+      sessions: thisWeekSessions.length
+    },
+    overall: {
+      totalSessions: studySessions.length,
+      totalTopics: topicMastery.length,
+      topicsNeedingRevision,
+      totalMistakesLogged: mistakeLogs.length
+    },
+    recentMistakes
   })
 }
