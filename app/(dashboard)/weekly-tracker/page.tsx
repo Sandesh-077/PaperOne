@@ -170,9 +170,9 @@ export default function WeeklyTrackerPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2">Next Week's Goal</label>
+            <label className="block text-sm font-medium mb-2">Next Week&apos;s Goal</label>
             <textarea
-              placeholder="What's your focus for next week?"
+              placeholder="What&apos;s your focus for next week?"
               defaultValue={editingFields['goal'] || ''}
               onChange={(e) => setEditingFields({...editingFields, goal: e.target.value})}
               className="w-full px-3 py-2 border rounded-lg resize-none h-24"

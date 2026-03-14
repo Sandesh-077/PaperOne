@@ -2,90 +2,36 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getPendingRevisions } from '@/lib/revision-scheduler'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const userId = session.user.id
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
 
-  // Get all data in parallel
-  const [
-    upcomingExams,
-    pendingRevisions,
-    recentLearningProjects,
-    recentSATSessions,
-    studySessions,
-    practicePapersWithReminders,
-  ] = await Promise.all([
-    // Upcoming exams with countdown
-    prisma.exam.findMany({
-      where: { userId, completed: false },
-      include: { subject: true },
-      orderBy: { examDate: 'asc' },
-      take: 5,
-    }),
-
-    // Pending revisions
-    getPendingRevisions(userId),
-
-    // Active learning projects
-    prisma.learningProject.findMany({
-      where: { userId, status: 'in_progress' },
-      include: {
-        sessions: {
-          orderBy: { date: 'desc' },
-          take: 1,
-        },
-      },
-      orderBy: { lastStudied: 'desc' },
-      take: 5,
-    }),
-
-    // Recent SAT sessions
-    prisma.sATSession.findMany({
-      where: { userId },
-      orderBy: { date: 'desc' },
-      take: 7,
-    }),
-
-    // Study sessions for streak calculation
-    prisma.studySession.findMany({
-      where: { userId },
-      orderBy: { date: 'desc' },
-    }),
-
-    // Practice papers needing reminders
-    prisma.practicePaper.findMany({
-      where: {
-        subject: { userId },
-        reminderDate: {
-          lte: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Next 3 days
-        },
-      },
-      include: {
-        subject: true,
-        topic: true,
-      },
-      orderBy: { reminderDate: 'asc' },
-    }),
-  ])
-
-  // Calculate exam countdowns
-  const examsWithCountdown = upcomingExams.map((exam: any) => {
-    const daysRemaining = Math.ceil(
-      (new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    )
-    return { ...exam, daysRemaining }
+  // Get study sessions for streak and stats
+  const studySessions = await prisma.studySession.findMany({
+    where: { userId: user.id },
+    orderBy: { date: 'desc' },
+    take: 30
   })
 
-  // Calculate unified streak (any study activity)
+  // Get topics needing revision
+  const topicsNeedingRevision = await prisma.topicMastery.findMany({
+    where: {
+      userId: user.id,
+      needsRevision: true
+    },
+    take: 5
+  })
+
+  // Calculate streak
   const calculateStreak = (sessions: any[]) => {
     if (sessions.length === 0) return 0
 
@@ -93,82 +39,67 @@ export async function GET() {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    // Get unique dates
     const uniqueDates = [...new Set(sessions.map(s => {
       const d = new Date(s.date)
       d.setHours(0, 0, 0, 0)
       return d.getTime()
-    }))].sort((a, b) => b - a) // Sort descending (most recent first)
+    }))].sort((a, b) => b - a)
 
     if (uniqueDates.length === 0) return 0
 
-    // Check if there's activity today or yesterday
     const mostRecentDate = new Date(uniqueDates[0])
     const daysSinceRecent = Math.floor((today.getTime() - mostRecentDate.getTime()) / (1000 * 60 * 60 * 24))
     
-    // If no activity today or yesterday, streak is broken
     if (daysSinceRecent > 1) return 0
 
-    // Count consecutive days
     streak = 1
     for (let i = 1; i < uniqueDates.length; i++) {
       const currentDate = new Date(uniqueDates[i])
       const prevDate = new Date(uniqueDates[i - 1])
       const daysDiff = Math.floor((prevDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24))
-      
-      if (daysDiff === 1) {
-        streak++
-      } else {
-        break
-      }
+      if (daysDiff === 1) streak++
+      else break
     }
 
     return streak
   }
 
-  // Calculate SAT streak
-  const satStreak = calculateStreak(recentSATSessions)
+  // Get this week's stats
+  const weekStart = new Date()
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay())
+  weekStart.setHours(0, 0, 0, 0)
 
-  // Calculate general study streak
-  const studyStreak = calculateStreak(studySessions)
+  const weekSessions = await prisma.studySession.findMany({
+    where: {
+      userId: user.id,
+      date: { gte: weekStart }
+    }
+  })
 
-  // Calculate learning projects streak
-  const learningStreak = recentLearningProjects.length > 0
-    ? Math.max(...recentLearningProjects.map((p: any) => {
-        if (!p.lastStudied) return 0
-        const daysSince = Math.floor(
-          (new Date().getTime() - new Date(p.lastStudied).getTime()) / (1000 * 60 * 60 * 24)
-        )
-        return daysSince <= 1 ? p.daysSpent : 0
-      }))
-    : 0
-
-  // Unified streak (maximum of all streaks)
-  const unifiedStreak = Math.max(studyStreak, satStreak, learningStreak)
-
-  // Learning projects with progress
-  const projectsWithProgress = recentLearningProjects.map((project: any) => ({
-    ...project,
-    progressPercentage: project.totalUnits
-      ? Math.round((project.completedUnits / project.totalUnits) * 100)
-      : 0,
-  }))
+  const totalHoursThisWeek = weekSessions.reduce((sum, s) => sum + (s.totalHours || 0), 0)
+  const pastPapersThisWeek = weekSessions.filter(s => s.taskType === 'PastPaper').length
 
   return NextResponse.json({
     streaks: {
-      unified: unifiedStreak,
-      study: studyStreak,
-      sat: satStreak,
-      learning: learningStreak,
+      current: calculateStreak(studySessions),
+      daysActive: new Set(studySessions.map(s => s.date.toISOString().split('T')[0])).size
     },
-    upcomingExams: examsWithCountdown,
-    pendingRevisions: pendingRevisions.slice(0, 5), // Top 5
-    activeLearningProjects: projectsWithProgress,
-    upcomingReminders: practicePapersWithReminders,
-    stats: {
-      totalExams: upcomingExams.length,
-      totalRevisionsDue: pendingRevisions.length,
-      activeProjects: recentLearningProjects.length,
+    thisWeek: {
+      totalHours: Math.round(totalHoursThisWeek * 100) / 100,
+      pastPapers: pastPapersThisWeek,
+      sessionsCompleted: weekSessions.length
     },
+    topicsNeedingRevision: topicsNeedingRevision.map(t => ({
+      id: t.id,
+      subject: t.subject,
+      topic: t.topicName,
+      confidenceScore: t.confidenceScore
+    })),
+    recentSessions: studySessions.slice(0, 5).map(s => ({
+      date: s.date.toISOString().split('T')[0],
+      subject: s.subject,
+      topic: s.topic,
+      hours: s.totalHours
+    }))
   })
 }

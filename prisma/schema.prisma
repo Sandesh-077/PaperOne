@@ -21,7 +21,6 @@ model User {
   errors            Error[]
   studySessions     StudySession[]
   subjects          Subject[]
-  exams             Exam[]
   topicMastery      TopicMastery[]
   mistakeLogs       MistakeLog[]
   weeklyPerformance WeeklyPerformance[]
@@ -230,7 +229,6 @@ model Subject {
   topics      Topic[]
   practicePapers PracticePaper[]
   notes       Note[]
-  exams       Exam[]
 
   @@index([userId])
 }
@@ -321,5 +319,4 @@ model Note {
   @@index([subjectId])
   @@index([topicId])
   @@index([subtopicId])
-}
 }

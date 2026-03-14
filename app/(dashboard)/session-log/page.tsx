@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import {useRouter, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 
 const SUBJECTS = ['9701 Chemistry', '9702 Physics', '9709 Mathematics', '9618 Computer Science', '8021 English GP']
 const TASK_TYPES = ['PastPaper', 'Revision', 'Flashcards', 'Notes']
@@ -57,10 +58,10 @@ export default function SessionLogPage() {
           accuracy,
           questionsAttempted: formData.questionsAttempted ? parseInt(formData.questionsAttempted) : null,
           questionsCorrect: formData.questionsCorrect ? parseInt(formData.questionsCorrect) : null,
-          distractionCount: parseInt(formData.distractionCount),
-          deepFocusScore: parseInt(formData.deepFocusScore),
+          distractionCount: formData.distractionCount,
+          deepFocusScore: formData.deepFocusScore,
           paperCode: formData.taskType === 'PastPaper' ? formData.paperCode : null,
-          paperYear: formData.taskType === 'PastPaper' ? parseInt(String(formData.paperYear)) : null,
+          paperYear: formData.taskType === 'PastPaper' ? formData.paperYear : null,
           mistakeType: formData.mistakeType || null
         })
       })
