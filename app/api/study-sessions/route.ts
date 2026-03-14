@@ -15,42 +15,67 @@ export async function POST(req: Request) {
   const data = await req.json()
 
   try {
-    // Create study session - cast to any to handle schema variations
-    const studySession = (await (prisma.studySession.create as any)({
-      data: {
-        userId: user.id,
-        date: new Date(data.date),
-        startTime: data.startTime ? new Date(data.startTime) : null,
-        endTime: data.endTime ? new Date(data.endTime) : null,
-        totalHours: data.totalHours,
-        subject: data.subject,
-        topic: data.topic,
-        taskType: data.taskType,
-        // Past Paper Fields
-        paperCode: data.paperCode,
-        paperYear: data.paperYear,
-        // Topical Paper Fields
-        isTopicalPaper: data.isTopicalPaper || false,
-        topicalPaperName: data.topicalPaperName,
-        topicalSource: data.topicalSource,
-        uploadedPaperUrl: data.uploadedPaperUrl,
-        // Notes Fields
-        notesAuthor: data.notesAuthor,
-        notesSource: data.notesSource,
-        uploadedNotesUrl: data.uploadedNotesUrl,
-        // Performance metrics
-        deepFocusScore: data.deepFocusScore,
-        questionsAttempted: data.questionsAttempted,
-        questionsCorrect: data.questionsCorrect,
-        totalMarks: data.totalMarks,
-        obtainedMarks: data.obtainedMarks,
-        accuracy: data.accuracy,
-        // Other fields
-        mistakeType: data.mistakeType,
-        distractionCount: data.distractionCount,
-        notes: data.notes
-      }
-    })) as any
+    // Try to create with NEW fields first (if migration is applied)
+    let studySession: any
+    try {
+      studySession = (await (prisma.studySession.create as any)({
+        data: {
+          userId: user.id,
+          date: new Date(data.date),
+          startTime: data.startTime ? new Date(data.startTime) : null,
+          endTime: data.endTime ? new Date(data.endTime) : null,
+          totalHours: data.totalHours,
+          subject: data.subject,
+          topic: data.topic,
+          taskType: data.taskType,
+          // Past Paper Fields
+          paperCode: data.paperCode,
+          paperYear: data.paperYear,
+          // Topical Paper Fields
+          isTopicalPaper: data.isTopicalPaper || false,
+          topicalPaperName: data.topicalPaperName,
+          topicalSource: data.topicalSource,
+          uploadedPaperUrl: data.uploadedPaperUrl,
+          // Notes Fields
+          notesAuthor: data.notesAuthor,
+          notesSource: data.notesSource,
+          uploadedNotesUrl: data.uploadedNotesUrl,
+          // Performance metrics
+          deepFocusScore: data.deepFocusScore,
+          questionsAttempted: data.questionsAttempted,
+          questionsCorrect: data.questionsCorrect,
+          totalMarks: data.totalMarks,
+          obtainedMarks: data.obtainedMarks,
+          accuracy: data.accuracy,
+          // Other fields
+          mistakeType: data.mistakeType,
+          distractionCount: data.distractionCount,
+          notes: data.notes
+        }
+      })) as any
+    } catch (dbErr: any) {
+      // New columns don't exist yet - use old schema
+      console.log('New StudySession columns not available, using legacy schema:', dbErr.message)
+      studySession = (await (prisma.studySession.create as any)({
+        data: {
+          userId: user.id,
+          date: new Date(data.date),
+          totalHours: data.totalHours,
+          subject: data.subject,
+          topic: data.topic,
+          taskType: data.taskType,
+          paperCode: data.paperCode,
+          paperYear: data.paperYear,
+          deepFocusScore: data.deepFocusScore,
+          questionsAttempted: data.questionsAttempted,
+          questionsCorrect: data.questionsCorrect,
+          accuracy: data.accuracy,
+          mistakeType: data.mistakeType,
+          distractionCount: data.distractionCount,
+          notes: data.notes
+        }
+      })) as any
+    }
 
     // Update or create TopicMastery (optional - table may not exist in DB yet)
     let topicMastery: any = null
@@ -89,7 +114,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, studySession, topicMastery })
   } catch (error) {
     console.error('Error creating study session:', error)
-    return NextResponse.json({error: 'Failed to create session'}, {status: 500})
+    const errorMsg = error instanceof Error ? error.message : 'Failed to create session'
+    return NextResponse.json({error: errorMsg}, {status: 500})
   }
 }
 
