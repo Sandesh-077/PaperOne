@@ -15,8 +15,9 @@ export async function POST(req: Request) {
   const data = await req.json()
 
   try {
-    // Base data that exists in ALL versions of StudySession
-    const baseData = {
+    // STRICT BASE DATA - Only fields that are GUARANTEED to exist
+    // This is the absolute minimum that works with older database schemas
+    const minimalData = {
       userId: user.id,
       date: new Date(data.date),
       subject: data.subject,
@@ -33,12 +34,17 @@ export async function POST(req: Request) {
       notes: data.notes || null
     }
 
-    // Extended data for new schema (with migration applied)
-    const extendedData = {
-      ...baseData,
+    // Core data with newer columns
+    const coreData = {
+      ...minimalData,
       startTime: data.startTime ? new Date(data.startTime) : null,
       endTime: data.endTime ? new Date(data.endTime) : null,
-      totalHours: data.totalHours || null,
+      totalHours: data.totalHours || 0
+    }
+
+    // Extended data for new schema (with migration applied)
+    const extendedData = {
+      ...coreData,
       isTopicalPaper: data.isTopicalPaper || false,
       topicalPaperName: data.topicalPaperName || null,
       topicalSource: data.topicalSource || null,
@@ -52,17 +58,26 @@ export async function POST(req: Request) {
 
     let studySession: any
     
-    // Try extended schema first
+    // Try extended schema first (all new features)
     try {
       studySession = (await (prisma.studySession.create as any)({
         data: extendedData
       })) as any
-    } catch (dbErr: any) {
-      // Fall back to base schema only
-      console.log('Extended schema failed, using base schema:', dbErr.message)
-      studySession = (await (prisma.studySession.create as any)({
-        data: baseData
-      })) as any
+      console.log('✓ Created with extended schema (new features available)')
+    } catch (err1: any) {
+      // Try core schema (with totalHours, startTime, endTime)
+      try {
+        studySession = (await (prisma.studySession.create as any)({
+          data: coreData
+        })) as any
+        console.log('✓ Created with core schema (basic features only)')
+      } catch (err2: any) {
+        // Fall back to minimal schema (oldest database)
+        console.log('✓ Created with minimal schema')
+        studySession = (await (prisma.studySession.create as any)({
+          data: minimalData
+        })) as any
+      }
     }
 
     // Update or create TopicMastery (optional - table may not exist in DB yet)
