@@ -15,65 +15,53 @@ export async function POST(req: Request) {
   const data = await req.json()
 
   try {
-    // Try to create with NEW fields first (if migration is applied)
+    // Base data that exists in ALL versions of StudySession
+    const baseData = {
+      userId: user.id,
+      date: new Date(data.date),
+      subject: data.subject,
+      topic: data.topic,
+      taskType: data.taskType,
+      paperCode: data.paperCode || null,
+      paperYear: data.paperYear || null,
+      deepFocusScore: data.deepFocusScore,
+      questionsAttempted: data.questionsAttempted || null,
+      questionsCorrect: data.questionsCorrect || null,
+      accuracy: data.accuracy || null,
+      mistakeType: data.mistakeType || null,
+      distractionCount: data.distractionCount || 0,
+      notes: data.notes || null
+    }
+
+    // Extended data for new schema (with migration applied)
+    const extendedData = {
+      ...baseData,
+      startTime: data.startTime ? new Date(data.startTime) : null,
+      endTime: data.endTime ? new Date(data.endTime) : null,
+      totalHours: data.totalHours || null,
+      isTopicalPaper: data.isTopicalPaper || false,
+      topicalPaperName: data.topicalPaperName || null,
+      topicalSource: data.topicalSource || null,
+      uploadedPaperUrl: data.uploadedPaperUrl || null,
+      notesAuthor: data.notesAuthor || null,
+      notesSource: data.notesSource || null,
+      uploadedNotesUrl: data.uploadedNotesUrl || null,
+      totalMarks: data.totalMarks || null,
+      obtainedMarks: data.obtainedMarks || null
+    }
+
     let studySession: any
+    
+    // Try extended schema first
     try {
       studySession = (await (prisma.studySession.create as any)({
-        data: {
-          userId: user.id,
-          date: new Date(data.date),
-          startTime: data.startTime ? new Date(data.startTime) : null,
-          endTime: data.endTime ? new Date(data.endTime) : null,
-          totalHours: data.totalHours,
-          subject: data.subject,
-          topic: data.topic,
-          taskType: data.taskType,
-          // Past Paper Fields
-          paperCode: data.paperCode,
-          paperYear: data.paperYear,
-          // Topical Paper Fields
-          isTopicalPaper: data.isTopicalPaper || false,
-          topicalPaperName: data.topicalPaperName,
-          topicalSource: data.topicalSource,
-          uploadedPaperUrl: data.uploadedPaperUrl,
-          // Notes Fields
-          notesAuthor: data.notesAuthor,
-          notesSource: data.notesSource,
-          uploadedNotesUrl: data.uploadedNotesUrl,
-          // Performance metrics
-          deepFocusScore: data.deepFocusScore,
-          questionsAttempted: data.questionsAttempted,
-          questionsCorrect: data.questionsCorrect,
-          totalMarks: data.totalMarks,
-          obtainedMarks: data.obtainedMarks,
-          accuracy: data.accuracy,
-          // Other fields
-          mistakeType: data.mistakeType,
-          distractionCount: data.distractionCount,
-          notes: data.notes
-        }
+        data: extendedData
       })) as any
     } catch (dbErr: any) {
-      // Migration not applied yet - use minimal legacy schema
-      // Only use columns that definitely exist in original database
-      console.log('Using minimal schema fallback:', dbErr.message)
+      // Fall back to base schema only
+      console.log('Extended schema failed, using base schema:', dbErr.message)
       studySession = (await (prisma.studySession.create as any)({
-        data: {
-          userId: user.id,
-          date: new Date(data.date),
-          subject: data.subject,
-          topic: data.topic,
-          taskType: data.taskType,
-          paperCode: data.paperCode,
-          paperYear: data.paperYear,
-          deepFocusScore: data.deepFocusScore,
-          questionsAttempted: data.questionsAttempted,
-          questionsCorrect: data.questionsCorrect,
-          accuracy: data.accuracy,
-          mistakeType: data.mistakeType,
-          distractionCount: data.distractionCount,
-          notes: data.notes
-        }
+        data: baseData
       })) as any
     }
 
