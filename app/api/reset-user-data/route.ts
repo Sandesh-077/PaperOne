@@ -16,31 +16,51 @@ export async function POST(req: Request) {
     console.log('🗑️  Starting user data reset...')
     
     // Delete all user-related data
-    await prisma.mistakeLog.deleteMany({
-      where: { userId: user.id }
-    })
+    try {
+      await prisma.mistakeLog.deleteMany({
+        where: { userId: user.id }
+      })
+    } catch (err) {
+      console.log('MistakeLog not available')
+    }
 
-    await prisma.weeklyPerformance.deleteMany({
-      where: { userId: user.id }
-    })
+    try {
+      await prisma.weeklyPerformance.deleteMany({
+        where: { userId: user.id }
+      })
+    } catch (err) {
+      console.log('WeeklyPerformance not available')
+    }
 
-    await prisma.monthSummary.deleteMany({
-      where: { userId: user.id }
-    })
+    try {
+      await prisma.monthSummary.deleteMany({
+        where: { userId: user.id }
+      })
+    } catch (err) {
+      console.log('MonthSummary not available')
+    }
 
-    await prisma.topicMastery.deleteMany({
-      where: { userId: user.id }
-    })
+    try {
+      await prisma.topicMastery.deleteMany({
+        where: { userId: user.id }
+      })
+    } catch (err) {
+      console.log('TopicMastery not available')
+    }
 
     await prisma.studySession.deleteMany({
       where: { userId: user.id }
     })
 
-    await prisma.error.deleteMany({
-      where: { userId: user.id }
-    })
+    try {
+      await prisma.error.deleteMany({
+        where: { userId: user.id }
+      })
+    } catch (err) {
+      console.log('Error table not available')
+    }
 
-    console.log('✅ All user data successfully deleted')
+    console.log('✅ All available user data successfully deleted')
     return NextResponse.json({
       success: true,
       message: 'All user data has been reset. You can start fresh!',

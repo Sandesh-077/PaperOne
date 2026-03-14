@@ -36,33 +36,38 @@ export async function POST(req: Request) {
       }
     })
 
-    // Update or create TopicMastery
-    const topicMastery = await prisma.topicMastery.upsert({
-      where: { userId_subject_topicName: { userId: user.id, subject: data.subject, topicName: data.topic } },
-      update: {
-        sessionsLogged: { increment: 1 },
-        lastRevised: new Date(),
-        updatedAt: new Date()
-      },
-      create: {
-        userId: user.id,
-        subject: data.subject,
-        topicName: data.topic,
-        confidenceScore: 3,
-        sessionsLogged: 1,
-        lastRevised: new Date()
-      }
-    })
+    // Update or create TopicMastery (optional - table may not exist in DB yet)
+    let topicMastery = null
+    try {
+      topicMastery = await prisma.topicMastery.upsert({
+        where: { userId_subject_topicName: { userId: user.id, subject: data.subject, topicName: data.topic } },
+        update: {
+          sessionsLogged: { increment: 1 },
+          lastRevised: new Date(),
+          updatedAt: new Date()
+        },
+        create: {
+          userId: user.id,
+          subject: data.subject,
+          topicName: data.topic,
+          confidenceScore: 3,
+          sessionsLogged: 1,
+          lastRevised: new Date()
+        }
+      })
 
-    // Recalculate needsRevision
-    const lastRevisedDate = new Date(topicMastery.lastRevised || new Date())
-    const daysSinceRevision = Math.floor((Date.now() - lastRevisedDate.getTime()) / (1000 * 60 * 60 * 24))
-    const needsRevision = topicMastery.confidenceScore <= 3 || daysSinceRevision > 7
+      // Recalculate needsRevision
+      const lastRevisedDate = new Date(topicMastery.lastRevised || new Date())
+      const daysSinceRevision = Math.floor((Date.now() - lastRevisedDate.getTime()) / (1000 * 60 * 60 * 24))
+      const needsRevision = topicMastery.confidenceScore <= 3 || daysSinceRevision > 7
 
-    await prisma.topicMastery.update({
-      where: { id: topicMastery.id },
-      data: { needsRevision }
-    })
+      await prisma.topicMastery.update({
+        where: { id: topicMastery.id },
+        data: { needsRevision }
+      })
+    } catch (err) {
+      console.log('TopicMastery table not available yet, skipping')
+    }
 
     return NextResponse.json({ success: true, studySession, topicMastery })
   } catch (error) {

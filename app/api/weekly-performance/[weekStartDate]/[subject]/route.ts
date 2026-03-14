@@ -39,7 +39,9 @@ export async function GET(
         taskType: true,
         accuracy: true,
         deepFocusScore: true,
-        distractionCount: true
+        distractionCount: true,
+        subject: true,
+        topic: true
       }
     })
 
@@ -85,7 +87,9 @@ export async function GET(
         taskType: true,
         accuracy: true,
         deepFocusScore: true,
-        distractionCount: true
+        distractionCount: true,
+        subject: true,
+        topic: true
       }
     })
 

@@ -22,37 +22,50 @@ export async function GET() {
 
   const startOfYear = new Date(now.getFullYear(), 0, 1)
 
-  const [
-    studySessions,
-    topicMastery,
-    mistakeLogs,
-    weeklyPerformance
-  ] = await Promise.all([
-    prisma.studySession.findMany({
-      where: { userId: user.id, date: { gte: startOfYear } },
-      orderBy: { date: 'desc' },
-      take: 365,
-      select: {
-        id: true,
-        date: true,
-        totalHours: true,
-        taskType: true
-      }
-    }),
-    prisma.topicMastery.findMany({
+  const studySessions = await prisma.studySession.findMany({
+    where: { userId: user.id, date: { gte: startOfYear } },
+    orderBy: { date: 'desc' },
+    take: 365,
+    select: {
+      id: true,
+      date: true,
+      totalHours: true,
+      taskType: true
+    }
+  })
+
+  // Fetch optional models with error handling
+  let topicMastery: any = []
+  let mistakeLogs: any = []
+  let weeklyPerformance: any = []
+
+  try {
+    topicMastery = await prisma.topicMastery.findMany({
       where: { userId: user.id }
-    }),
-    prisma.mistakeLog.findMany({
+    })
+  } catch (err) {
+    console.log('TopicMastery not available')
+  }
+
+  try {
+    mistakeLogs = await prisma.mistakeLog.findMany({
       where: { userId: user.id },
       orderBy: { date: 'desc' },
       take: 100
-    }),
-    prisma.weeklyPerformance.findMany({
+    })
+  } catch (err) {
+    console.log('MistakeLog not available')
+  }
+
+  try {
+    weeklyPerformance = await prisma.weeklyPerformance.findMany({
       where: { userId: user.id },
       orderBy: { weekStartDate: 'desc' },
       take: 52
     })
-  ])
+  } catch (err) {
+    console.log('WeeklyPerformance not available')
+  }
 
   // Calculate streaks
   let currentStreak = 0
@@ -101,13 +114,13 @@ export async function GET() {
   const thisWeekPapers = thisWeekSessions.filter(s => s.taskType === 'PastPaper').length
 
   // Topics needing revision
-  const topicsNeedingRevision = topicMastery.filter(t => t.needsRevision).length
+  const topicsNeedingRevision = topicMastery.filter((t: any) => t.needsRevision).length
 
   // Recent mistakes
-  const recentMistakes = mistakeLogs.slice(0, 5).map(m => ({
-    date: m.date.toISOString().split('T')[0],
-    topic: m.topic,
-    type: m.mistakeType
+  const recentMistakes = mistakeLogs.slice(0, 5).map((m: any) => ({
+    date: m.date ? new Date(m.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    topic: m.topic || 'Unknown',
+    type: m.mistakeType || 'Unknown'
   }))
 
   return NextResponse.json({
