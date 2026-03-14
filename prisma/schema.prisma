@@ -25,6 +25,7 @@ model User {
   mistakeLogs       MistakeLog[]
   weeklyPerformance WeeklyPerformance[]
   monthSummary      MonthSummary[]
+  config            UserConfig?
 }
 
 model Error {
@@ -51,24 +52,37 @@ model StudySession {
 
   // Core session info
   date               DateTime
-  startTime          DateTime? // Optional: time when study session started
-  endTime            DateTime? // Optional: time when study session ended
-  totalHours         Float    @default(0) // User-provided or auto-calculated: (endTime - startTime) / 3600
+  startTime          DateTime? 
+  endTime            DateTime? 
+  totalHours         Float    @default(0)
   
-  // Subject & Topic (required always)
-  subject            String   // Dropdown ONLY: 9701|9702|9709|9618|8021
-  topic              String   // Free text, auto-populates from TopicMastery
+  // Subject & Topic
+  subject            String
+  topic              String
   
   // Task type with conditional fields
-  taskType           String   // "PastPaper" | "Revision" | "Flashcards" | "Notes"
-  paperCode          String?  // REQUIRED only if taskType == "PastPaper", else NULL
-  paperYear          Int?     // REQUIRED only if taskType == "PastPaper", else NULL
+  taskType           String   // "PastPaper" | "Revision" | "Flashcards" | "Notes" | custom
+  
+  // Past Paper Fields
+  paperCode          String?  // For full past papers: e.g., "9702/21"
+  paperYear          Int?     // For full past papers
+  isTopicalPaper     Boolean  @default(false) // True if topical past paper
+  topicalPaperName   String?  // Name/topic of topical paper
+  topicalSource      String?  // Where topical paper is from
+  uploadedPaperUrl   String?  // URL to uploaded past paper PDF
+  
+  // Notes Fields
+  notesAuthor        String?  // Whose notes (author/source)
+  notesSource        String?  // Where the notes are from
+  uploadedNotesUrl   String?  // URL to uploaded notes PDF (required for Notes task)
   
   // Performance metrics
   deepFocusScore     Int      // 1-10 scale, required
-  questionsAttempted Int?     // Optional, for PastPaper tasks
-  questionsCorrect   Int?     // Optional, for PastPaper tasks
-  accuracy           Float?   // Auto-calculated if both above present: (correct/attempted)*100
+  questionsAttempted Int?     // Optional, deprecated in favor of totalMarks/obtainedMarks
+  questionsCorrect   Int?     // Optional, deprecated in favor of totalMarks/obtainedMarks
+  totalMarks         Int?     // Total marks in the paper/quiz
+  obtainedMarks      Int?     // Marks obtained
+  accuracy           Float?   // Auto-calculated if both above present
   
   // Mistake tracking
   mistakeType        String?  // "Concept" | "Formula" | "Careless" | null
@@ -86,6 +100,19 @@ model StudySession {
   @@index([date])
   @@index([subject])
   @@index([topic])
+}
+
+// User Configuration - for custom subjects and task types
+model UserConfig {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  customSubjects     Json     @default("[]")  // Array of { name: string, code: string }
+  customTaskTypes    Json     @default("[]")  // Array of custom task type names
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 // Topic mastery tracking - auto-calculated from session log

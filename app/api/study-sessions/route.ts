@@ -20,16 +20,32 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         date: new Date(data.date),
+        startTime: data.startTime ? new Date(data.startTime) : null,
+        endTime: data.endTime ? new Date(data.endTime) : null,
         totalHours: data.totalHours,
         subject: data.subject,
         topic: data.topic,
         taskType: data.taskType,
+        // Past Paper Fields
         paperCode: data.paperCode,
         paperYear: data.paperYear,
+        // Topical Paper Fields
+        isTopicalPaper: data.isTopicalPaper || false,
+        topicalPaperName: data.topicalPaperName,
+        topicalSource: data.topicalSource,
+        uploadedPaperUrl: data.uploadedPaperUrl,
+        // Notes Fields
+        notesAuthor: data.notesAuthor,
+        notesSource: data.notesSource,
+        uploadedNotesUrl: data.uploadedNotesUrl,
+        // Performance metrics
         deepFocusScore: data.deepFocusScore,
         questionsAttempted: data.questionsAttempted,
         questionsCorrect: data.questionsCorrect,
+        totalMarks: data.totalMarks,
+        obtainedMarks: data.obtainedMarks,
         accuracy: data.accuracy,
+        // Other fields
         mistakeType: data.mistakeType,
         distractionCount: data.distractionCount,
         notes: data.notes
