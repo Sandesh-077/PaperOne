@@ -165,13 +165,14 @@ export default function SessionLogPage() {
       }
 
       const accuracy = calculateAccuracy()
+      const accuracyValue = accuracy ? parseFloat(accuracy) : null
       const response = await fetch('/api/study-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           totalHours: calculateTotalHours(),
-          accuracy,
+          accuracy: accuracyValue,
           // Convert marks
           totalMarks: formData.totalMarks ? parseInt(formData.totalMarks) : null,
           obtainedMarks: formData.obtainedMarks ? parseInt(formData.obtainedMarks) : null,
