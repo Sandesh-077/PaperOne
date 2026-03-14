@@ -31,7 +31,13 @@ export async function GET() {
     prisma.studySession.findMany({
       where: { userId: user.id, date: { gte: startOfYear } },
       orderBy: { date: 'desc' },
-      take: 365
+      take: 365,
+      select: {
+        id: true,
+        date: true,
+        totalHours: true,
+        taskType: true
+      }
     }),
     prisma.topicMastery.findMany({
       where: { userId: user.id }

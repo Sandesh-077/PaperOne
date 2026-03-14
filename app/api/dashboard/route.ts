@@ -89,7 +89,7 @@ export async function GET() {
       pastPapers: pastPapersThisWeek,
       sessionsCompleted: weekSessions.length
     },
-    topicsNeedingRevision: topicsNeedingRevision.map(t => ({
+    topicsNeedingRevision: topicsNeedingRevision.map((t: any) => ({
       id: t.id,
       subject: t.subject,
       topic: t.topicName,

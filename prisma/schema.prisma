@@ -51,9 +51,9 @@ model StudySession {
 
   // Core session info
   date               DateTime
-  startTime          DateTime // Must be same day as date
-  endTime            DateTime
-  totalHours         Float    @default(0) // Auto-calculated: (endTime - startTime) / 3600
+  startTime          DateTime? // Optional: time when study session started
+  endTime            DateTime? // Optional: time when study session ended
+  totalHours         Float    @default(0) // User-provided or auto-calculated: (endTime - startTime) / 3600
   
   // Subject & Topic (required always)
   subject            String   // Dropdown ONLY: 9701|9702|9709|9618|8021

@@ -37,10 +37,10 @@ export async function GET(request: Request) {
       userId: user.id,
       date: { gte: startDate, lte: endDate }
     },
-    select: { date: true, taskType: true }
+    select: { date: true, taskType: true, subject: true }
   })
 
-  // Aggregate by day
+  // Map dates to activities
   const activityMap = new Map<string, Set<string>>()
 
   studySessions.forEach(session => {
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     if (!activityMap.has(dateKey)) {
       activityMap.set(dateKey, new Set())
     }
-    activityMap.get(dateKey)!.add(session.taskType)
+    if (session.taskType) activityMap.get(dateKey)!.add(session.taskType)
   })
 
   // Convert to array

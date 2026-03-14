@@ -26,11 +26,20 @@ export async function GET(
     const sessions = await prisma.studySession.findMany({
       where: {
         userId: user.id,
-        subject,
+        subject: subject,
         date: {
           gte: startDate,
           lte: endDate
         }
+      },
+      select: {
+        id: true,
+        date: true,
+        totalHours: true,
+        taskType: true,
+        accuracy: true,
+        deepFocusScore: true,
+        distractionCount: true
       }
     })
 
@@ -63,11 +72,20 @@ export async function GET(
     const prevSessions = await prisma.studySession.findMany({
       where: {
         userId: user.id,
-        subject,
+        subject: subject,
         date: {
           gte: prevStartDate,
           lte: prevEndDate
         }
+      },
+      select: {
+        id: true,
+        date: true,
+        totalHours: true,
+        taskType: true,
+        accuracy: true,
+        deepFocusScore: true,
+        distractionCount: true
       }
     })
 

@@ -20,8 +20,7 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         date: new Date(data.date),
-        startTime: new Date(`${data.date}T${data.startTime}`),
-        endTime: new Date(`${data.date}T${data.endTime}`),
+        totalHours: data.totalHours,
         subject: data.subject,
         topic: data.topic,
         taskType: data.taskType,
@@ -33,8 +32,7 @@ export async function POST(req: Request) {
         accuracy: data.accuracy,
         mistakeType: data.mistakeType,
         distractionCount: data.distractionCount,
-        notes: data.notes,
-        totalHours: data.totalHours
+        notes: data.notes
       }
     })
 
