@@ -6,24 +6,24 @@ async function main() {
   console.log('🗑️  Starting database reset...')
   
   try {
-    // Delete in reverse order of dependencies
-    console.log('Deleting PracticePaperQuestions...')
-    await prisma.practicePaperQuestion.deleteMany({})
+    // Delete in reverse order of dependencies (models that exist in current schema)
+    console.log('Deleting MistakeLogs...')
+    await prisma.mistakeLog.deleteMany({})
     
-    console.log('Deleting PracticePaperLogs...')
-    await prisma.practicePaperLog.deleteMany({})
+    console.log('Deleting WeeklyPerformance...')
+    await prisma.weeklyPerformance.deleteMany({})
     
-    console.log('Deleting PracticePapers...')
-    await prisma.practicePaper.deleteMany({})
+    console.log('Deleting MonthSummary...')
+    await prisma.monthSummary.deleteMany({})
     
-    console.log('Deleting Exams...')
-    await prisma.exam.deleteMany({})
+    console.log('Deleting TopicMastery...')
+    await prisma.topicMastery.deleteMany({})
+    
+    console.log('Deleting StudySessions...')
+    await prisma.studySession.deleteMany({})
     
     console.log('Deleting Notes...')
     await prisma.note.deleteMany({})
-    
-    console.log('Deleting Revisions...')
-    await prisma.revision.deleteMany({})
     
     console.log('Deleting Subtopics...')
     await prisma.subtopic.deleteMany({})
@@ -34,32 +34,8 @@ async function main() {
     console.log('Deleting Subjects...')
     await prisma.subject.deleteMany({})
     
-    console.log('Deleting SATSessions...')
-    await prisma.sATSession.deleteMany({})
-    
-    console.log('Deleting StudySessions...')
-    await prisma.studySession.deleteMany({})
-    
-    console.log('Deleting LearningSessions...')
-    await prisma.learningSession.deleteMany({})
-    
-    console.log('Deleting Vocabulary...')
-    await prisma.vocabulary.deleteMany({})
-    
-    console.log('Deleting GrammarRules...')
-    await prisma.grammarRule.deleteMany({})
-    
-    console.log('Deleting Essays...')
-    await prisma.essay.deleteMany({})
-    
     console.log('Deleting Errors...')
     await prisma.error.deleteMany({})
-    
-    //    console.log('Deleting Accounts...')
-    //    await prisma.account.deleteMany({})
-    
-    //    console.log('Deleting Sessions...')
-    //    await prisma.session.deleteMany({})
     
     console.log('Deleting Users...')
     await prisma.user.deleteMany({})
@@ -79,3 +55,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect()
   })
+

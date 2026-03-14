@@ -7,74 +7,84 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
   
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
+
+  const { id } = await params
+
   const subject = await prisma.subject.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       topics: {
         include: {
-          subtopics: true,
-          _count: {
-            select: {
-              revisions: true,
-              practicePapers: true,
-              notes: true,
-            },
-          },
+          subtopics: true
         },
         orderBy: { order: 'asc' },
-      },
-      practicePapers: {
-        include: {
-          logs: {
-            orderBy: { date: 'desc' },
-            take: 5,
-          },
-          questions: {
-            orderBy: { createdAt: 'desc' },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      },
+      }
     },
   })
 
-  if (!subject || subject.userId !== session.user.id) {
+  if (!subject || subject.userId !== user.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  return NextResponse.json(subject)
+  // Get past papers from study sessions for this subject
+  const pastPapers = await prisma.studySession.findMany({
+    where: {
+      userId: user.id,
+      subject: subject.name,
+      taskType: 'PastPaper'
+    },
+    orderBy: { date: 'desc' }
+  })
+
+  return NextResponse.json({
+    ...subject,
+    pastPapers: pastPapers.map(p => ({
+      id: p.id,
+      paperCode: p.paperCode,
+      paperYear: p.paperYear,
+      date: p.date,
+      totalHours: p.totalHours,
+      accuracy: p.accuracy
+    }))
+  })
 }
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
   
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
+
+  const { id } = await params
   const subject = await prisma.subject.findUnique({
-    where: { id: params.id },
+    where: { id },
   })
 
-  if (!subject || subject.userId !== session.user.id) {
+  if (!subject || subject.userId !== user.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   const data = await request.json()
   
   const updatedSubject = await prisma.subject.update({
-    where: { id: params.id },
+    where: { id },
     data,
   })
 
@@ -83,24 +93,28 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions)
   
-  if (!session?.user?.id) {
+  if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
+
+  const { id } = await params
   const subject = await prisma.subject.findUnique({
-    where: { id: params.id },
+    where: { id },
   })
 
-  if (!subject || subject.userId !== session.user.id) {
+  if (!subject || subject.userId !== user.id) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   await prisma.subject.delete({
-    where: { id: params.id },
+    where: { id },
   })
 
   return NextResponse.json({ success: true })
