@@ -10,29 +10,26 @@ export async function POST(req: Request) {
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   // Save OTP to user (valid for 10 min)
-  await prisma.user.update({
-    where: { email },
-    data: {
-      otp,
-      otpExpires: new Date(Date.now() + 10 * 60 * 1000)
+  try {
+    await (prisma.user as any).update({
+      where: { email },
+      data: {
+        otp,
+        otpExpires: new Date(Date.now() + 10 * 60 * 1000)
+      }
+    });
+  } catch (error: any) {
+    if (error.code === 'P2025') {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
-  });
+    throw error;
+  }
 
-  // Send OTP email
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS
-    }
-  });
+  // Log OTP for development
+  console.log(`🔐 OTP for ${email}: ${otp}`);
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'Your OTP for Password Reset',
-    text: `Your OTP is: ${otp}`
-  });
+  // TODO: In production, send OTP via email using SendGrid, Resend, or similar
+  // For now, we log it to the console for development
 
   return NextResponse.json({ success: true });
 }
