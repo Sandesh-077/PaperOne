@@ -1,7 +1,30 @@
 -- Add missing core columns to StudySession that should exist
--- These are needed for session logging to work
+-- This handles mismatches between Prisma schema and actual database
 
+-- Check if table exists and add missing columns one by one
 ALTER TABLE "StudySession"
+ADD COLUMN IF NOT EXISTS "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN IF NOT EXISTS "subject" TEXT NOT NULL DEFAULT 'Unknown',
+ADD COLUMN IF NOT EXISTS "topic" TEXT NOT NULL DEFAULT 'Unknown',
+ADD COLUMN IF NOT EXISTS "taskType" TEXT NOT NULL DEFAULT 'Revision',
 ADD COLUMN IF NOT EXISTS "startTime" TIMESTAMP(3),
 ADD COLUMN IF NOT EXISTS "endTime" TIMESTAMP(3),
-ADD COLUMN IF NOT EXISTS "totalHours" DOUBLE PRECISION NOT NULL DEFAULT 0;
+ADD COLUMN IF NOT EXISTS "totalHours" DOUBLE PRECISION DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "paperCode" TEXT,
+ADD COLUMN IF NOT EXISTS "paperYear" INTEGER,
+ADD COLUMN IF NOT EXISTS "deepFocusScore" INTEGER NOT NULL DEFAULT 5,
+ADD COLUMN IF NOT EXISTS "questionsAttempted" INTEGER,
+ADD COLUMN IF NOT EXISTS "questionsCorrect" INTEGER,
+ADD COLUMN IF NOT EXISTS "accuracy" DOUBLE PRECISION,
+ADD COLUMN IF NOT EXISTS "mistakeType" TEXT,
+ADD COLUMN IF NOT EXISTS "distractionCount" INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS "notes" TEXT,
+ADD COLUMN IF NOT EXISTS "isTopicalPaper" BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS "topicalPaperName" TEXT,
+ADD COLUMN IF NOT EXISTS "topicalSource" TEXT,
+ADD COLUMN IF NOT EXISTS "uploadedPaperUrl" TEXT,
+ADD COLUMN IF NOT EXISTS "notesAuthor" TEXT,
+ADD COLUMN IF NOT EXISTS "notesSource" TEXT,
+ADD COLUMN IF NOT EXISTS "uploadedNotesUrl" TEXT,
+ADD COLUMN IF NOT EXISTS "totalMarks" INTEGER,
+ADD COLUMN IF NOT EXISTS "obtainedMarks" INTEGER;

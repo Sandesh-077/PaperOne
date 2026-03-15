@@ -15,70 +15,44 @@ export async function POST(req: Request) {
   const data = await req.json()
 
   try {
-    // STRICT BASE DATA - Only fields that are GUARANTEED to exist
-    // This is the absolute minimum that works with older database schemas
-    const minimalData = {
+    // Build data object dynamically - only include fields that are provided
+    // This allows us to work with any database schema
+    const createData: any = {
       userId: user.id,
-      date: new Date(data.date),
-      subject: data.subject,
-      topic: data.topic,
-      taskType: data.taskType,
-      paperCode: data.paperCode || null,
-      paperYear: data.paperYear || null,
-      deepFocusScore: data.deepFocusScore,
-      questionsAttempted: data.questionsAttempted || null,
-      questionsCorrect: data.questionsCorrect || null,
-      accuracy: data.accuracy || null,
-      mistakeType: data.mistakeType || null,
-      distractionCount: data.distractionCount || 0,
-      notes: data.notes || null
+      date: data.date ? new Date(data.date) : new Date(),
+      subject: data.subject || 'Unknown',
+      topic: data.topic || 'Unknown',
+      taskType: data.taskType || 'Revision',
+      deepFocusScore: data.deepFocusScore || 5,
+      distractionCount: data.distractionCount || 0
     }
 
-    // Core data with newer columns
-    const coreData = {
-      ...minimalData,
-      startTime: data.startTime ? new Date(data.startTime) : null,
-      endTime: data.endTime ? new Date(data.endTime) : null,
-      totalHours: data.totalHours || 0
-    }
+    // Add optional core fields if provided
+    if (data.startTime) createData.startTime = new Date(data.startTime)
+    if (data.endTime) createData.endTime = new Date(data.endTime)
+    if (data.totalHours !== undefined && data.totalHours !== null) createData.totalHours = data.totalHours
+    if (data.paperCode !== undefined && data.paperCode !== null) createData.paperCode = data.paperCode
+    if (data.paperYear !== undefined && data.paperYear !== null) createData.paperYear = data.paperYear
+    if (data.questionsAttempted !== undefined && data.questionsAttempted !== null) createData.questionsAttempted = data.questionsAttempted
+    if (data.questionsCorrect !== undefined && data.questionsCorrect !== null) createData.questionsCorrect = data.questionsCorrect
+    if (data.accuracy !== undefined && data.accuracy !== null) createData.accuracy = data.accuracy
+    if (data.mistakeType !== undefined && data.mistakeType !== null) createData.mistakeType = data.mistakeType
+    if (data.notes !== undefined && data.notes !== null) createData.notes = data.notes
 
-    // Extended data for new schema (with migration applied)
-    const extendedData = {
-      ...coreData,
-      isTopicalPaper: data.isTopicalPaper || false,
-      topicalPaperName: data.topicalPaperName || null,
-      topicalSource: data.topicalSource || null,
-      uploadedPaperUrl: data.uploadedPaperUrl || null,
-      notesAuthor: data.notesAuthor || null,
-      notesSource: data.notesSource || null,
-      uploadedNotesUrl: data.uploadedNotesUrl || null,
-      totalMarks: data.totalMarks || null,
-      obtainedMarks: data.obtainedMarks || null
-    }
+    // Add new feature fields if provided
+    if (data.isTopicalPaper !== undefined) createData.isTopicalPaper = data.isTopicalPaper
+    if (data.topicalPaperName !== undefined && data.topicalPaperName !== null) createData.topicalPaperName = data.topicalPaperName
+    if (data.topicalSource !== undefined && data.topicalSource !== null) createData.topicalSource = data.topicalSource
+    if (data.uploadedPaperUrl !== undefined && data.uploadedPaperUrl !== null) createData.uploadedPaperUrl = data.uploadedPaperUrl
+    if (data.notesAuthor !== undefined && data.notesAuthor !== null) createData.notesAuthor = data.notesAuthor
+    if (data.notesSource !== undefined && data.notesSource !== null) createData.notesSource = data.notesSource
+    if (data.uploadedNotesUrl !== undefined && data.uploadedNotesUrl !== null) createData.uploadedNotesUrl = data.uploadedNotesUrl
+    if (data.totalMarks !== undefined && data.totalMarks !== null) createData.totalMarks = data.totalMarks
+    if (data.obtainedMarks !== undefined && data.obtainedMarks !== null) createData.obtainedMarks = data.obtainedMarks
 
-    let studySession: any
-    
-    // Try extended schema first (all new features)
-    try {
-      studySession = (await (prisma.studySession.create as any)({
-        data: extendedData
-      })) as any
-      console.log('✓ Created with extended schema (new features available)')
-    } catch (err1: any) {
-      // Try core schema (with totalHours, startTime, endTime)
-      try {
-        studySession = (await (prisma.studySession.create as any)({
-          data: coreData
-        })) as any
-        console.log('✓ Created with core schema (basic features only)')
-      } catch (err2: any) {
-        // Fall back to minimal schema (oldest database)
-        console.log('✓ Created with minimal schema')
-        studySession = (await (prisma.studySession.create as any)({
-          data: minimalData
-        })) as any
-      }
-    }
+    const studySession = (await (prisma.studySession.create as any)({
+      data: createData
+    })) as any
 
     // Update or create TopicMastery (optional - table may not exist in DB yet)
     let topicMastery: any = null
