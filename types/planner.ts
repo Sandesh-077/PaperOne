@@ -1,8 +1,11 @@
 /**
- * TypeScript interfaces for the Exam Planner feature
- * Covers exam entries, revision plans, and daily tasks
+ * Exam Planner TypeScript Interfaces
+ * Types for exam tracking, revision planning, and daily tasks
  */
 
+/**
+ * Input shape for creating a new exam entry
+ */
 export interface ExamEntryInput {
   subject: string;
   subjectName: string;
@@ -15,12 +18,18 @@ export interface ExamEntryInput {
   color?: string;
 }
 
+/**
+ * Exam entry with database metadata
+ */
 export interface ExamEntry extends ExamEntryInput {
   id: string;
   userId: string;
   createdAt: string;
 }
 
+/**
+ * Single study session block within a day
+ */
 export interface PlanSession {
   slot: "morning" | "afternoon" | "evening";
   subject: string;
@@ -29,14 +38,20 @@ export interface PlanSession {
   type: "revision" | "pastpaper" | "practice" | "rest";
 }
 
+/**
+ * One day in the revision plan
+ */
 export interface PlanDay {
   date: string; // YYYY-MM-DD format
   phase: "foundation" | "blitz" | "exam";
   isExamDay?: boolean;
-  examOn?: string; // Exam subject name if isExamDay is true
+  examOn?: string; // Exam subject if exam day
   sessions: PlanSession[];
 }
 
+/**
+ * Phase information within a revision plan
+ */
 export interface RevisionPhase {
   name: string;
   label: string;
@@ -45,14 +60,20 @@ export interface RevisionPhase {
   description: string;
 }
 
+/**
+ * Complete AI-generated revision plan data
+ */
 export interface RevisionPlanData {
   phases: RevisionPhase[];
   days: PlanDay[];
 }
 
+/**
+ * Daily task from database
+ */
 export interface DailyTask {
   id: string;
-  date: string; // ISO date string
+  date: string;
   sessionSlot: string;
   subject: string;
   subjectName: string;
@@ -64,6 +85,9 @@ export interface DailyTask {
   studySessionId?: string;
 }
 
+/**
+ * Subject context for AI plan generation
+ */
 export interface SubjectContext {
   subject: string;
   subjectName: string;
