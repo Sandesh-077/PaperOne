@@ -118,7 +118,7 @@ export function TodayWidget() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Today's Plan</h2>
+          <h2 className="text-xl font-bold text-gray-900">Today’s Plan</h2>
           <p className="text-sm text-gray-600">{formattedDate}</p>
         </div>
       </div>

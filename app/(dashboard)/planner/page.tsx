@@ -6,6 +6,7 @@ import Link from 'next/link'
 
 interface DailyTask {
   id: string
+  date: string
   sessionSlot: string
   subject: string
   subjectName: string
@@ -116,7 +117,7 @@ export default function PlannerPage() {
         </div>
 
         <div className="bg-blue-50 rounded-lg p-8 border border-blue-200 text-center">
-          <p className="text-gray-700 mb-4">No revision plan found. Let's create one!</p>
+          <p className="text-gray-700 mb-4">No revision plan found. Let’s create one!</p>
           <Link
             href="/planner/setup"
             className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
@@ -194,7 +195,7 @@ export default function PlannerPage() {
 
       {/* Today's Sessions */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today's Sessions</h2>
+        <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today’s Sessions</h2>
         <p className="text-sm text-gray-600 mb-4">{today}</p>
         
         {data.todayTasks.length === 0 ? (
