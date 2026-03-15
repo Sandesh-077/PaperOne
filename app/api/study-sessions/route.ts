@@ -15,8 +15,20 @@ export async function POST(req: Request) {
   const data = await req.json()
 
   try {
+    // Helper function to convert time string (HH:MM) + date to valid DateTime
+    const combineDateTime = (dateStr: string, timeStr: string) => {
+      if (!dateStr || !timeStr) return null
+      try {
+        const combined = `${dateStr}T${timeStr}:00`
+        const date = new Date(combined)
+        if (isNaN(date.getTime())) return null
+        return date
+      } catch {
+        return null
+      }
+    }
+
     // Build data object dynamically - only include fields that are provided
-    // This allows us to work with any database schema
     const createData: any = {
       userId: user.id,
       date: data.date ? new Date(data.date) : new Date(),
@@ -28,8 +40,11 @@ export async function POST(req: Request) {
     }
 
     // Add optional core fields if provided
-    if (data.startTime) createData.startTime = new Date(data.startTime)
-    if (data.endTime) createData.endTime = new Date(data.endTime)
+    const startDateTime = combineDateTime(data.date, data.startTime)
+    const endDateTime = combineDateTime(data.date, data.endTime)
+    
+    if (startDateTime) createData.startTime = startDateTime
+    if (endDateTime) createData.endTime = endDateTime
     if (data.totalHours !== undefined && data.totalHours !== null) createData.totalHours = data.totalHours
     if (data.paperCode !== undefined && data.paperCode !== null) createData.paperCode = data.paperCode
     if (data.paperYear !== undefined && data.paperYear !== null) createData.paperYear = data.paperYear
