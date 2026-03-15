@@ -2,13 +2,13 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { Anthropic } from '@anthropic-ai/sdk'
+import { Groq } from 'groq-sdk'
 import type { SubjectContext, RevisionPlanData } from '@/types/planner'
 
 export const dynamic = 'force-dynamic'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY
 })
 
 export async function POST(req: Request) {
@@ -135,9 +135,9 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
   ]
 }`
 
-    // STEP 6: Call Anthropic API
-    const message = await anthropic.messages.create({
-      model: 'claude-haiku-4-5',
+    // STEP 6: Call Groq API
+    const message = await groq.chat.completions.create({
+      model: 'mixtral-8x7b-32768',
       max_tokens: 8000,
       messages: [
         {
@@ -148,8 +148,7 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
     })
 
     // Extract text response
-    const responseText =
-      message.content[0].type === 'text' ? message.content[0].text : ''
+    const responseText = message.choices[0].message.content || ''
 
     // Strip markdown code fences
     let jsonString = responseText
