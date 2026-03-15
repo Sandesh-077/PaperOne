@@ -401,6 +401,7 @@ model RevisionPlan {
 model DailyTask {
   id              String   @id @default(cuid())
   userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   planId          String
   plan            RevisionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
   
