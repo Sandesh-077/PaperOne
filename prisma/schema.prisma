@@ -26,6 +26,9 @@ model User {
   weeklyPerformance WeeklyPerformance[]
   monthSummary      MonthSummary[]
   config            UserConfig?
+  examEntries       ExamEntry[]
+  revisionPlans     RevisionPlan[]
+  dailyTasks        DailyTask[]
 }
 
 model Error {
@@ -346,4 +349,77 @@ model Note {
   @@index([subjectId])
   @@index([topicId])
   @@index([subtopicId])
+}
+
+// Exam planner - exam entry tracking
+model ExamEntry {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  subject         String   // Subject code
+  subjectName     String   // Display name
+  paperCode       String   // Paper code (e.g., "9702/21")
+  paperName       String   // Paper name
+  examDate        DateTime // Scheduled exam date
+  timeSlot        String   // "AM" or "PM"
+  
+  previousScore   Float?   // Previous score if available
+  targetScore     Float?   // Target score goal
+  color           String?  // For UI display
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([examDate])
+}
+
+// Revision plan - AI-generated study plan
+model RevisionPlan {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  generatedAt     DateTime @default(now())
+  firstExamDate   DateTime // First exam in the plan
+  lastExamDate    DateTime // Last exam in the plan
+  studyHoursPerDay Int    @default(4) // Recommended daily hours
+  isActive        Boolean  @default(true)
+  
+  planData        Json     // Full AI-generated plan serialized as JSON
+  
+  dailyTasks      DailyTask[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Daily task - daily study assignments within a revision plan
+model DailyTask {
+  id              String   @id @default(cuid())
+  userId          String
+  planId          String
+  plan            RevisionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  
+  date            DateTime // Task date
+  sessionSlot     String   // e.g., "Morning", "Afternoon", "Evening"
+  subject         String   // Subject code
+  subjectName     String   // Display name
+  
+  taskDesc        String   @db.Text // Task description
+  taskType        String   // "Revision" | "PastPaper" | "TopicalReview" | "Practice"
+  phase           String   // "Foundational" | "Intermediate" | "Advanced" | "ExamPrep"
+  
+  completed       Boolean  @default(false)
+  completedAt     DateTime?
+  studySessionId  String?  // Link to StudySession if completed
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([planId])
 }
