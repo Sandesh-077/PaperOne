@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { TodayWidget } from '@/components/planner/TodayWidget'
 
 interface DashboardData {
   streaks: {
@@ -140,6 +141,9 @@ export default function EnhancedDashboardPage() {
           <p className="text-xs text-gray-500 mt-2">completed</p>
         </div>
       </div>
+
+      {/* Today's Plan Widget */}
+      <TodayWidget />
 
       {/* Topics Needing Revision */}
       {topicsNeedingRevision.length > 0 && (
