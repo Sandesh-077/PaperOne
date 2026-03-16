@@ -59,7 +59,9 @@ export default function SessionLogPage() {
     mistakeType: '',
     distractionCount: 0,
     notes: ''
-  })and last used mode on mount
+  })
+
+  // Load user config and last used mode on mount
   useEffect(() => {
     const loadInitialData = async () => {
       // Load last used mode from localStorage
@@ -122,8 +124,6 @@ export default function SessionLogPage() {
     const subjectMap = getExamSubjects()
     return subjectMap.get(subjectCode) || []
   }
-    if (session) loadUserConfig()
-  }, [session])
 
   const calculateTotalHours = () => {
     const [startH, startM] = formData.startTime.split(':').map(Number)
