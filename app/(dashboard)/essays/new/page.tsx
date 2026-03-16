@@ -157,6 +157,19 @@ function NewEssayForm() {
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Essay Topic or Question *</label>
+            <textarea
+              value={formData.prompt}
+              onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
+              required
+              rows={2}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 font-normal"
+              placeholder="Enter the essay topic or question..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Essay Content *</label>
             <textarea
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
