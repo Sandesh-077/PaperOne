@@ -131,23 +131,23 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
   ]
 }`
 
-    // STEP 6: Call Groq API
-    const message = await groq.chat.completions.create({
-      model: 'mixtral-8x7b-32768',
-      max_tokens: 8000,
-      messages: [emini API
+    // STEP 6: Call Gemini API
     const responseText = await callGemini(prompt, 8000)
 
     // STEP 7: Parse JSON response
     let planData: RevisionPlanData
     try {
-      planData = parseJsonResponse(responseText
+      planData = parseJsonResponse(responseText)
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError)
+      console.error('Response text:', responseText)
+      return NextResponse.json(
         { error: 'AI returned invalid JSON. Please try again.' },
         { status: 500 }
       )
     }
 
-    // STEP 7: Save to database
+    // STEP 8: Save to database
     // Deactivate existing active plans
     await prismaAny.revisionPlan.updateMany({
       where: {
@@ -166,7 +166,7 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
         firstExamDate: new Date(firstExamDate),
         lastExamDate: new Date(lastExamDate),
         studyHoursPerDay,
-        isAc8ive: true,
+        isActive: true,
         planData: planData
       }
     })
@@ -193,7 +193,7 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
       }
     }
 
-    // STEP 8: Return response
+    // STEP 9: Return response
     return NextResponse.json({
       success: true,
       planId: revisionPlan.id,
@@ -208,4 +208,3 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
     )
   }
 }
-9
