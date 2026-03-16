@@ -2,14 +2,10 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { Groq } from 'groq-sdk'
+import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
 import type { SubjectContext, RevisionPlanData } from '@/types/planner'
 
 export const dynamic = 'force-dynamic'
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY
-})
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -139,32 +135,13 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
     const message = await groq.chat.completions.create({
       model: 'mixtral-8x7b-32768',
       max_tokens: 8000,
-      messages: [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ]
-    })
+      messages: [emini API
+    const responseText = await callGemini(prompt, 8000)
 
-    // Extract text response
-    const responseText = message.choices[0].message.content || ''
-
-    // Strip markdown code fences
-    let jsonString = responseText
-      .replace(/^```json\n?/, '')
-      .replace(/\n?```$/, '')
-      .replace(/^```\n?/, '')
-      .trim()
-
-    // Parse JSON
+    // STEP 7: Parse JSON response
     let planData: RevisionPlanData
     try {
-      planData = JSON.parse(jsonString)
-    } catch (parseError) {
-      console.error('JSON Parse Error:', parseError)
-      console.error('Response text:', responseText)
-      return NextResponse.json(
+      planData = parseJsonResponse(responseText
         { error: 'AI returned invalid JSON. Please try again.' },
         { status: 500 }
       )
@@ -189,7 +166,7 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
         firstExamDate: new Date(firstExamDate),
         lastExamDate: new Date(lastExamDate),
         studyHoursPerDay,
-        isActive: true,
+        isAc8ive: true,
         planData: planData
       }
     })
@@ -231,3 +208,4 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
     )
   }
 }
+9
