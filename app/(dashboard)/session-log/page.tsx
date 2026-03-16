@@ -8,11 +8,23 @@ const DEFAULT_SUBJECTS = ['9701 Chemistry', '9702 Physics', '9709 Mathematics', 
 const DEFAULT_TASK_TYPES = ['PastPaper', 'Revision', 'Flashcards', 'Notes']
 const MISTAKE_TYPES = ['Concept', 'Formula', 'Careless']
 
+interface ExamEntry {
+  id: string
+  subject: string
+  subjectName: string
+  paperCode: string
+  paperName: string
+  examDate: string
+  timeSlot: string
+}
+
 export default function SessionLogPage() {
   const router = useRouter()
   const { data: session } = useSession()
   const [loading, setLoading] = useState(false)
   const [configTab, setConfigTab] = useState(false)
+  const [mode, setMode] = useState<'exam' | 'custom'>('exam')
+  const [examEntries, setExamEntries] = useState<ExamEntry[]>([])
   const [subjects, setSubjects] = useState<string[]>(DEFAULT_SUBJECTS)
   const [taskTypes, setTaskTypes] = useState<string[]>(DEFAULT_TASK_TYPES)
   const [newSubject, setNewSubject] = useState('')
@@ -47,26 +59,69 @@ export default function SessionLogPage() {
     mistakeType: '',
     distractionCount: 0,
     notes: ''
-  })
-
-  // Load user config on mount
+  })and last used mode on mount
   useEffect(() => {
-    const loadUserConfig = async () => {
-      try {
-        const response = await fetch('/api/user-config')
-        if (response.ok) {
-          const data = await response.json()
-          if (data.customSubjects?.length > 0) {
-            setSubjects([...DEFAULT_SUBJECTS, ...data.customSubjects])
+    const loadInitialData = async () => {
+      // Load last used mode from localStorage
+      const savedMode = localStorage.getItem('sessionLogMode') as 'exam' | 'custom' | null
+      if (savedMode) {
+        setMode(savedMode)
+      }
+
+      if (session) {
+        // Load user config
+        try {
+          const response = await fetch('/api/user-config')
+          if (response.ok) {
+            const data = await response.json()
+            if (data.customSubjects?.length > 0) {
+              setSubjects([...DEFAULT_SUBJECTS, ...data.customSubjects])
+            }
+            if (data.customTaskTypes?.length > 0) {
+              setTaskTypes([...DEFAULT_TASK_TYPES, ...data.customTaskTypes])
+            }
           }
-          if (data.customTaskTypes?.length > 0) {
-            setTaskTypes([...DEFAULT_TASK_TYPES, ...data.customTaskTypes])
-          }
+        } catch (error) {
+          console.error('Failed to load user config:', error)
         }
-      } catch (error) {
-        console.error('Failed to load user config:', error)
+
+        // Load exam entries for Exam Subject mode
+        try {
+          const response = await fetch('/api/exam-entries')
+          if (response.ok) {
+            const data = await response.json()
+            setExamEntries(data.entries || [])
+          }
+        } catch (error) {
+          console.error('Failed to load exam entries:', error)
+        }
       }
     }
+    loadInitialData()
+  }, [session])
+
+  const handleModeChange = (newMode: 'exam' | 'custom') => {
+    setMode(newMode)
+    localStorage.setItem('sessionLogMode', newMode)
+  }
+
+  // Get unique subjects from exam entries for Exam Subject mode
+  const getExamSubjects = () => {
+    const subjects = new Map<string, ExamEntry[]>()
+    examEntries.forEach(entry => {
+      if (!subjects.has(entry.subject)) {
+        subjects.set(entry.subject, [])
+      }
+      subjects.get(entry.subject)!.push(entry)
+    })
+    return subjects
+  }
+
+  // Get papers for selected subject in Exam Subject mode
+  const getPapersForSubject = (subjectCode: string) => {
+    const subjectMap = getExamSubjects()
+    return subjectMap.get(subjectCode) || []
+  }
     if (session) loadUserConfig()
   }, [session])
 
@@ -146,56 +201,33 @@ export default function SessionLogPage() {
     e.preventDefault()
     setLoading(true)
     try {
-      let paperUrl = uploadedFiles.paperUrl || null
-      let notesUrl = uploadedFiles.notesUrl || null
-
-      // Upload paper if selected
-      if (paperFile && !paperUrl) {
-        paperUrl = await handleFileUpload(paperFile, 'paper')
+      const payload: any = {
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        subject: formData.subject,
+        taskType: formData.taskType,
+        totalHours: calculateTotalHours(),
+        deepFocusScore: formData.deepFocusScore,
+        notes: formData.notes,
       }
 
-      // Upload notes - REQUIRED for Notes task type
-      if (formData.taskType === 'Notes' && notesFile && !notesUrl) {
-        notesUrl = await handleFileUpload(notesFile, 'notes')
-        if (!notesUrl) {
-          alert('Failed to upload notes PDF. Please try again.')
-          setLoading(false)
-          return
-        }
+      // Mode-specific fields
+      if (mode === 'exam') {
+        payload.topic = formData.paperCode // For exam subject, topic = paper code
+        payload.totalMarks = formData.totalMarks ? parseInt(formData.totalMarks) : null
+        payload.obtainedMarks = formData.obtainedMarks ? parseInt(formData.obtainedMarks) : null
+        const accuracy = calculateAccuracy()
+        payload.accuracy = accuracy ? parseFloat(accuracy) : null
+        payload.distractionCount = formData.distractionCount
+      } else if (mode === 'custom') {
+        payload.topic = '' // Custom mode doesn't require topic
       }
 
-      const accuracy = calculateAccuracy()
-      const accuracyValue = accuracy ? parseFloat(accuracy) : null
       const response = await fetch('/api/study-sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          totalHours: calculateTotalHours(),
-          accuracy: accuracyValue,
-          // Convert marks
-          totalMarks: formData.totalMarks ? parseInt(formData.totalMarks) : null,
-          obtainedMarks: formData.obtainedMarks ? parseInt(formData.obtainedMarks) : null,
-          // Past paper specific
-          paperCode: (formData.taskType === 'PastPaper' && !formData.isTopicalPaper) ? formData.paperCode : null,
-          paperYear: (formData.taskType === 'PastPaper' && !formData.isTopicalPaper) ? formData.paperYear : null,
-          // Topical paper specific
-          isTopicalPaper: formData.isTopicalPaper,
-          topicalPaperName: formData.isTopicalPaper ? formData.topicalPaperName : null,
-          topicalSource: formData.isTopicalPaper ? formData.topicalSource : null,
-          uploadedPaperUrl: paperUrl,
-          // Notes specific
-          notesAuthor: formData.taskType === 'Notes' ? formData.notesAuthor : null,
-          notesSource: formData.taskType === 'Notes' ? formData.notesSource : null,
-          uploadedNotesUrl: formData.taskType === 'Notes' ? notesUrl : null,
-          // Other
-          mistakeType: formData.mistakeType || null,
-          distractionCount: formData.distractionCount,
-          deepFocusScore: formData.deepFocusScore,
-          // Deprecated fields (keep for backward compatibility)
-          questionsAttempted: null,
-          questionsCorrect: null
-        })
+        body: JSON.stringify(payload)
       })
 
       if (response.ok) {
@@ -223,9 +255,6 @@ export default function SessionLogPage() {
           distractionCount: 0,
           notes: ''
         })
-        setPaperFile(null)
-        setNotesFile(null)
-        setUploadedFiles({})
       } else {
         const error = await response.text()
         alert('Failed to log session: ' + error)
@@ -325,10 +354,36 @@ export default function SessionLogPage() {
       ) : (
         // SESSION LOG FORM
         <>
-          <p className="text-gray-600 mb-6">Log a study session. Each session entry is the single source of truth for all analytics.</p>
+          <p className="text-gray-600 mb-4">Log a study session. Each session entry is the single source of truth for all analytics.</p>
+
+          {/* Mode Toggle */}
+          <div className="flex gap-2 mb-6">
+            <button
+              type="button"
+              onClick={() => handleModeChange('exam')}
+              className={`px-4 py-2 rounded-full font-semibold transition ${
+                mode === 'exam'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              📚 Exam Subject
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange('custom')}
+              className={`px-4 py-2 rounded-full font-semibold transition ${
+                mode === 'custom'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              ✨ Custom / Other
+            </button>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Date & Time */}
+            {/* Shared: Date & Time */}
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-semibold mb-2">Date *</label>
@@ -348,154 +403,174 @@ export default function SessionLogPage() {
               Total Hours: <strong>{calculateTotalHours().toFixed(2)}</strong> (auto-calculated)
             </div>
 
-            {/* Subject & Topic */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">Subject * (Dropdown)</label>
-                <select value={formData.subject} onChange={(e) => setFormData({...formData, subject: e.target.value})} required className="w-full border rounded px-3 py-2">
-                  {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">Topic *</label>
-                <input type="text" value={formData.topic} onChange={(e) => setFormData({...formData, topic: e.target.value})} required placeholder="e.g., Mechanics, Organic Chemistry" className="w-full border rounded px-3 py-2" />
-              </div>
-            </div>
-
-            {/* Task Type */}
-            <div>
-              <label className="block text-sm font-semibold mb-2">Task Type *</label>
-              <select value={formData.taskType} onChange={(e) => setFormData({...formData, taskType: e.target.value, isTopicalPaper: false})} className="w-full border rounded px-3 py-2">
-                {taskTypes.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-
-            {/* Conditional: Past Paper Fields */}
-            {formData.taskType === 'PastPaper' && (
-              <div className="bg-yellow-50 p-4 rounded border-l-4 border-yellow-500">
-                <div className="flex items-center mb-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.isTopicalPaper}
-                      onChange={(e) => setFormData({...formData, isTopicalPaper: e.target.checked})}
-                      className="w-4 h-4"
-                    />
-                    <span className="font-semibold">Is Topical Paper? (not full past paper)</span>
-                  </label>
-                </div>
-
-                {!formData.isTopicalPaper && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Paper Code *</label>
-                      <input type="text" value={formData.paperCode} onChange={(e) => setFormData({...formData, paperCode: e.target.value})} placeholder="e.g., 9702/21" className="w-full border rounded px-3 py-2" required />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Paper Year *</label>
-                      <input type="number" value={formData.paperYear} onChange={(e) => setFormData({...formData, paperYear: parseInt(e.target.value)})} className="w-full border rounded px-3 py-2" required />
-                    </div>
-                  </div>
-                )}
-
-                {formData.isTopicalPaper && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Topical Paper Name/Topic *</label>
-                      <input type="text" value={formData.topicalPaperName} onChange={(e) => setFormData({...formData, topicalPaperName: e.target.value})} placeholder="e.g., Mechanics - Circular Motion" className="w-full border rounded px-3 py-2" required />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Source *</label>
-                      <input type="text" value={formData.topicalSource} onChange={(e) => setFormData({...formData, topicalSource: e.target.value})} placeholder="e.g., Cambridge notes, KhanAcademy Q18" className="w-full border rounded px-3 py-2" required />
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4">
-                  <label className="block text-sm font-semibold mb-2">Upload Paper (PDF) - Optional</label>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setPaperFile(e.target.files?.[0] || null)}
-                    className="w-full border rounded px-3 py-2"
-                  />
-                  {paperFile && <p className="text-sm text-green-600 mt-1">✓ {paperFile.name}</p>}
-                </div>
-              </div>
-            )}
-
-            {/* Conditional: Notes Fields */}
-            {formData.taskType === 'Notes' && (
-              <div className="bg-purple-50 p-4 rounded border-l-4 border-purple-500">
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Author/Writer of Notes *</label>
-                    <input type="text" value={formData.notesAuthor} onChange={(e) => setFormData({...formData, notesAuthor: e.target.value})} placeholder="e.g., Teacher name, TextBook" className="w-full border rounded px-3 py-2" required />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Source/Where From *</label>
-                    <input type="text" value={formData.notesSource} onChange={(e) => setFormData({...formData, notesSource: e.target.value})} placeholder="e.g., Chapter 5, Physics notes folder" className="w-full border rounded px-3 py-2" required />
-                  </div>
-                </div>
-
+            {/* MODE 1: EXAM SUBJECT */}
+            {mode === 'exam' && (
+              <>
+                {/* Subject Selection */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Upload Notes (PDF) * REQUIRED</label>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => setNotesFile(e.target.files?.[0] || null)}
-                    className="w-full border rounded px-3 py-2"
-                    required
-                  />
-                  {notesFile ? (
-                    <p className="text-sm text-green-600 mt-1">✓ {notesFile.name}</p>
+                  <label className="block text-sm font-semibold mb-2">Subject * (from your exams)</label>
+                  {examEntries.length === 0 ? (
+                    <div className="bg-amber-50 p-3 rounded border border-amber-200 text-sm text-amber-700">
+                      No exam entries found. <a href="/planner/setup" className="underline font-semibold">Set up your exams first →</a>
+                    </div>
                   ) : (
-                    <p className="text-sm text-red-600 mt-1">Please upload a PDF file</p>
+                    <select
+                      value={formData.subject}
+                      onChange={(e) => setFormData({...formData, subject: e.target.value, paperCode: ''})}
+                      required
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">Select a subject...</option>
+                      {Array.from(getExamSubjects().entries()).map(([code, papers]) => (
+                        <option key={code} value={code}>
+                          {papers[0]?.subjectName} ({code})
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
-              </div>
+
+                {/* Paper Selection */}
+                {formData.subject && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Paper *</label>
+                    <select
+                      value={formData.paperCode}
+                      onChange={(e) => setFormData({...formData, paperCode: e.target.value})}
+                      required
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">Select a paper...</option>
+                      {getPapersForSubject(formData.subject).map((paper) => (
+                        <option key={paper.id} value={paper.paperCode}>
+                          {paper.paperName} ({paper.paperCode})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Task Type: 3 Toggle Buttons */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Task Type *</label>
+                  <div className="flex gap-2">
+                    {['Past Paper', 'Revision', 'Practice Questions'].map((type) => (
+                      <button
+                        type="button"
+                        key={type}
+                        onClick={() => setFormData({...formData, taskType: type})}
+                        className={`flex-1 px-3 py-2 rounded font-semibold transition ${
+                          formData.taskType === type
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Marks Section */}
+                <div className="bg-green-50 p-4 rounded border-l-4 border-green-500">
+                  <h3 className="font-semibold mb-3">📊 Marks Tracking</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold mb-2">Total Marks *</label>
+                      <input
+                        type="number"
+                        value={formData.totalMarks}
+                        onChange={(e) => setFormData({...formData, totalMarks: e.target.value})}
+                        placeholder="e.g., 100"
+                        required
+                        className="w-full border rounded px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-2">Obtained Marks *</label>
+                      <input
+                        type="number"
+                        value={formData.obtainedMarks}
+                        onChange={(e) => setFormData({...formData, obtainedMarks: e.target.value})}
+                        placeholder="e.g., 78"
+                        required
+                        className="w-full border rounded px-3 py-2"
+                      />
+                    </div>
+                  </div>
+                  {calculateAccuracy() && (
+                    <div className="mt-3 p-2 bg-white rounded text-sm text-green-700 font-semibold">
+                      Accuracy: <strong>{calculateAccuracy()}%</strong> (auto-calculated)
+                    </div>
+                  )}
+                </div>
+
+                {/* Deep Focus Score Slider */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Deep Focus Score (1-10) * <span className={`text-xs ${getFocusColor(formData.deepFocusScore)}`}>({formData.deepFocusScore})</span></label>
+                  <input type="range" min="1" max="10" value={formData.deepFocusScore} onChange={(e) => setFormData({...formData, deepFocusScore: parseInt(e.target.value)})} className="w-full" />
+                </div>
+
+                {/* Distraction Count Stepper */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Distraction Count</label>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, distractionCount: Math.max(0, formData.distractionCount - 1)})}
+                      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-semibold"
+                    >
+                      −
+                    </button>
+                    <span className="text-lg font-semibold min-w-[50px] text-center">{formData.distractionCount}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({...formData, distractionCount: formData.distractionCount + 1})}
+                      className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 font-semibold"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Marks Tracking */}
-            <div className="bg-green-50 p-4 rounded border-l-4 border-green-500">
-              <h3 className="font-semibold mb-3">📊 Marks Tracking</h3>
-              <div className="grid grid-cols-2 gap-4">
+            {/* MODE 2: CUSTOM / OTHER */}
+            {mode === 'custom' && (
+              <>
+                {/* Subject Input */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Total Marks in Paper/Quiz</label>
-                  <input type="number" value={formData.totalMarks} onChange={(e) => setFormData({...formData, totalMarks: e.target.value})} placeholder="e.g., 100" className="w-full border rounded px-3 py-2" />
+                  <label className="block text-sm font-semibold mb-2">Subject *</label>
+                  <input
+                    type="text"
+                    value={formData.subject}
+                    onChange={(e) => setFormData({...formData, subject: e.target.value})}
+                    placeholder="e.g., SAT Prep, Coding Practice"
+                    required
+                    className="w-full border rounded px-3 py-2"
+                  />
                 </div>
+
+                {/* Task Type Input */}
                 <div>
-                  <label className="block text-sm font-semibold mb-2">Obtained Marks</label>
-                  <input type="number" value={formData.obtainedMarks} onChange={(e) => setFormData({...formData, obtainedMarks: e.target.value})} placeholder="e.g., 78" className="w-full border rounded px-3 py-2" />
+                  <label className="block text-sm font-semibold mb-2">Task Type *</label>
+                  <input
+                    type="text"
+                    value={formData.taskType}
+                    onChange={(e) => setFormData({...formData, taskType: e.target.value})}
+                    placeholder="e.g., Reading, Coding Challenge, Mock Test"
+                    required
+                    className="w-full border rounded px-3 py-2"
+                  />
                 </div>
-              </div>
-              {calculateAccuracy() && (
-                <div className="mt-3 p-2 bg-white rounded text-sm text-green-700 font-semibold">
-                  Accuracy: <strong>{calculateAccuracy()}%</strong> (auto-calculated)
+
+                {/* Deep Focus Score Slider */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Deep Focus Score (1-10) * <span className={`text-xs ${getFocusColor(formData.deepFocusScore)}`}>({formData.deepFocusScore})</span></label>
+                  <input type="range" min="1" max="10" value={formData.deepFocusScore} onChange={(e) => setFormData({...formData, deepFocusScore: parseInt(e.target.value)})} className="w-full" />
                 </div>
-              )}
-            </div>
-
-            {/* Deep Focus & Mistakes */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">Deep Focus Score (1-10) * <span className={`text-xs ${getFocusColor(formData.deepFocusScore)}`}>({formData.deepFocusScore})</span></label>
-                <input type="range" min="1" max="10" value={formData.deepFocusScore} onChange={(e) => setFormData({...formData, deepFocusScore: parseInt(e.target.value)})} className="w-full" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">Mistake Type (if any)</label>
-                <select value={formData.mistakeType} onChange={(e) => setFormData({...formData, mistakeType: e.target.value})} className="w-full border rounded px-3 py-2">
-                  <option value="">None</option>
-                  {MISTAKE_TYPES.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Distraction Count */}
-            <div>
-              <label className="block text-sm font-semibold mb-2">Distraction Count</label>
-              <input type="number" min="0" value={formData.distractionCount} onChange={(e) => setFormData({...formData, distractionCount: parseInt(e.target.value)})} className="w-full border rounded px-3 py-2" />
-            </div>
+              </>
+            )}
 
             {/* Notes */}
             <div>
@@ -504,7 +579,7 @@ export default function SessionLogPage() {
             </div>
 
             {/* Submit */}
-            <button type="submit" disabled={loading || (formData.taskType === 'Notes' && !notesFile)} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
+            <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50">
               {loading ? 'Logging...' : '✓ Log Session'}
             </button>
           </form>
