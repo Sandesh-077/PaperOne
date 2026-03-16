@@ -29,6 +29,7 @@ model User {
   examEntries       ExamEntry[]
   revisionPlans     RevisionPlan[]
   dailyTasks        DailyTask[]
+  essays            Essay[]
 }
 
 model Error {
@@ -92,6 +93,9 @@ model StudySession {
   
   // Distractions
   distractionCount   Int      @default(0)
+  
+  // Session tracking
+  mistakeLogged      Boolean  @default(false)
   
   // Notes
   notes              String?  @db.Text
@@ -421,6 +425,26 @@ model DailyTask {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+
+// Essay tracking with AI feedback
+model Essay {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  title        String
+  topic        String?
+  content      String   @db.Text
+  
+  essayType    String?  // "full" | "introduction" | "conclusion" | "argument" | "counterclaim" | "rebuttal"
+  aiFeedback   Json?
+  aiFeedbackAt DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
   @@index([userId, date])
   @@index([planId])
 }
