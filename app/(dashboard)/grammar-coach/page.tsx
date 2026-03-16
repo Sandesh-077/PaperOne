@@ -143,7 +143,7 @@ export default function GrammarCoachPage() {
           <h1 className="text-4xl font-bold text-gray-800 mb-8">Grammar Coach</h1>
           <div className="bg-white rounded-xl shadow-lg p-8 text-center">
             <p className="text-gray-600 text-lg mb-4">
-              🎉 Great news! You haven't identified any grammar weak areas yet.
+              🎉 Great news! You haven&apos;t identified any grammar weak areas yet.
             </p>
             <p className="text-gray-500">
               Submit some writing practice pieces to get started. AI will analyze them and identify areas for improvement.
@@ -241,7 +241,7 @@ export default function GrammarCoachPage() {
                     <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
                       <p className="text-xs font-semibold text-orange-900 mb-2">EXAMPLES FROM YOUR WRITING:</p>
                       <p className="text-sm text-orange-800 italic">
-                        "{weakness.contextExamples[0]}"
+                        &quot;{weakness.contextExamples[0]}&quot;
                       </p>
                     </div>
                   )}

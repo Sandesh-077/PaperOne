@@ -222,7 +222,7 @@ export default function LearningJournalPage() {
           {/* Left: Daily Words */}
           <div className="col-span-1">
             <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
-              <h2 className="text-xl font-bold text-gray-800 mb-4">Today's Words</h2>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Today&apos;s Words</h2>
               <div className="space-y-3">
                 {dailyWords.map((word) => (
                   <button
@@ -360,7 +360,7 @@ export default function LearningJournalPage() {
                         <textarea
                           value={personalNotes}
                           onChange={(e) => setPersonalNotes(e.target.value)}
-                          placeholder="e.g., Remember 'serendipity' with 'ser-en-dipity' - found by dipping randomly"
+                          placeholder="e.g., Remember &apos;serendipity&apos; with &apos;ser-en-dipity&apos; - found by dipping randomly"
                           rows={3}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 resize-none"
                         />
@@ -411,11 +411,11 @@ export default function LearningJournalPage() {
                       {/* Areas of Confusion */}
                       <div>
                         <label className="block text-sm font-semibold text-gray-800 mb-2">Areas of Confusion</label>
-                        <p className="text-xs text-gray-500 mb-2">What's confusing or tricky about this word?</p>
+                        <p className="text-xs text-gray-500 mb-2">What&apos;s confusing or tricky about this word?</p>
                         <textarea
                           value={areasOfConfusion}
                           onChange={(e) => setAreasOfConfusion(e.target.value)}
-                          placeholder="e.g., Sounds similar to 'serene' but different meaning..."
+                          placeholder="e.g., Sounds similar to &apos;serene&apos; but different meaning..."
                           rows={2}
                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 resize-none"
                         />
