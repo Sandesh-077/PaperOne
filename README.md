@@ -1920,6 +1920,7 @@ GrammarWeaknessArea (auto-identified problems)
 The learning system is fully integrated into the dashboard and accessible across multiple pages:
 
 **Dashboard** (`/dashboard/home`)
+
 - **Today's 5 Words Widget** - Shows daily vocabulary words with learned/learning status
 - **Latest Writing Widget** - Displays most recent writing submission with scores (Grammar, Vocabulary, Overall)
 - **Grammar Focus Widget** - Shows top 3 grammar weaknesses with priority indicators
@@ -1927,6 +1928,7 @@ The learning system is fully integrated into the dashboard and accessible across
 - All widgets auto-update with real-time data from learning system APIs
 
 **Vocabulary Page** (`/dashboard/vocabulary`)
+
 - **Today's Vocabulary Focus Section** - Grid display of 5 daily words
 - **Per-Word Cards** - Shows word name, definition, category, difficulty level, confidence stars
 - **Mark Learned Button** - Toggle word status between learning/learned with instant API update
@@ -1936,6 +1938,7 @@ The learning system is fully integrated into the dashboard and accessible across
 - **Improve My Writing Tab** - Submit text for vocabulary enhancement suggestions
 
 **Writing Practice Page** (`/dashboard/writing-practice`)
+
 - **Submission Form** - Title, prompt, writing content, difficulty level, focus area selection
 - **Async Feedback System** - Real-time polling for AI assessment results
 - **Score Display** - 4 cards showing Grammar (0-10), Vocabulary (0-10), Structure (0-10), Overall (0-10)
@@ -1944,6 +1947,7 @@ The learning system is fully integrated into the dashboard and accessible across
 - **Past Submissions View** - Scroll through all previous writing attempts with scores
 
 **Learning Journal Page** (`/dashboard/learning-journal`)
+
 - **Sidebar** - Today's 5 vocabulary words with learned status indicators
 - **Journal Editor** - Edit/view mode toggle for flexible interaction
 - **Full Reflection Fields**:
@@ -1957,6 +1961,7 @@ The learning system is fully integrated into the dashboard and accessible across
 - **Word Progress Badges** - Status (learning|learned|needs_practice) with confidence stars
 
 **Grammar Coach Page** (`/dashboard/grammar-coach`)
+
 - **Weakness List View** - All identified grammar areas with descriptions
 - **Statistics Display** - Instance count, practice attempts, improvement rate, last occurrence date
 - **Sorting Options** - Sort by urgency, frequency, or recency

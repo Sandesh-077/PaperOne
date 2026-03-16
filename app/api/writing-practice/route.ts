@@ -171,7 +171,6 @@ Return ONLY valid JSON - no markdown, no explanation:
     const feedback = parseJsonResponse(feedbackText)
 
     // Extract word usage information
-    const allVocab = new Set<string>()
     const usedCorrectly: string[] = []
     const usedIncorrectly: string[] = []
 
@@ -182,7 +181,6 @@ Return ONLY valid JSON - no markdown, no explanation:
         } else {
           usedCorrectly.push(analysis.word)
         }
-        allVocab.add(analysis.word)
       })
     }
 
