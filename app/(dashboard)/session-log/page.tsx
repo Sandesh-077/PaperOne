@@ -228,9 +228,19 @@ export default function SessionLogPage() {
         if (formData.taskType === 'Revision' && formData.chapter) {
           payload.chapter = formData.chapter
         }
-        // Add questions count for Practice Questions mode
-        if (formData.taskType === 'Practice Questions' && formData.questionsAttempted) {
-          payload.questionsAttempted = parseInt(formData.questionsAttempted)
+        // Add questions tracking for Practice Questions mode
+        if (formData.taskType === 'Practice Questions') {
+          if (formData.questionsAttempted) {
+            payload.questionsAttempted = parseInt(formData.questionsAttempted)
+          }
+          if (formData.questionsCorrect) {
+            payload.questionsCorrect = parseInt(formData.questionsCorrect)
+          }
+          // Calculate accuracy if both present
+          if (formData.questionsAttempted && formData.questionsCorrect) {
+            const accuracy = (parseInt(formData.questionsCorrect) / parseInt(formData.questionsAttempted)) * 100
+            payload.accuracy = parseFloat(accuracy.toFixed(2))
+          }
         }
         payload.distractionCount = formData.distractionCount
       } else if (mode === 'custom') {
@@ -523,29 +533,52 @@ export default function SessionLogPage() {
 
                 {/* Revision: Chapter Field */}
                 {formData.taskType === 'Revision' && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Chapter / Topic</label>
-                    <input
-                      type="text"
-                      value={formData.chapter}
-                      onChange={(e) => setFormData({...formData, chapter: e.target.value})}
-                      placeholder="e.g., Chapter 5 - Thermodynamics"
-                      className="w-full border rounded px-3 py-2"
-                    />
+                  <div className="bg-purple-50 p-4 rounded border-l-4 border-purple-500">
+                    <h3 className="font-semibold mb-3">📖 Revision Details</h3>
+                    <div>
+                      <label className="block text-sm font-semibold mb-2">Chapter / Topic</label>
+                      <input
+                        type="text"
+                        value={formData.chapter}
+                        onChange={(e) => setFormData({...formData, chapter: e.target.value})}
+                        placeholder="e.g., Chapter 5 - Thermodynamics"
+                        className="w-full border rounded px-3 py-2"
+                      />
+                    </div>
                   </div>
                 )}
 
-                {/* Practice Questions: Questions Count Field */}
+                {/* Practice Questions: Questions Count & Accuracy */}
                 {formData.taskType === 'Practice Questions' && (
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Number of Questions Attempted</label>
-                    <input
-                      type="number"
-                      value={formData.questionsAttempted}
-                      onChange={(e) => setFormData({...formData, questionsAttempted: e.target.value})}
-                      placeholder="e.g., 25"
-                      className="w-full border rounded px-3 py-2"
-                    />
+                  <div className="bg-amber-50 p-4 rounded border-l-4 border-amber-500">
+                    <h3 className="font-semibold mb-3">🎯 Practice Questions Tracking</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold mb-2">Questions Attempted</label>
+                        <input
+                          type="number"
+                          value={formData.questionsAttempted}
+                          onChange={(e) => setFormData({...formData, questionsAttempted: e.target.value})}
+                          placeholder="e.g., 25"
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold mb-2">Correct Answers</label>
+                        <input
+                          type="number"
+                          value={formData.questionsCorrect}
+                          onChange={(e) => setFormData({...formData, questionsCorrect: e.target.value})}
+                          placeholder="e.g., 20"
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                    </div>
+                    {formData.questionsAttempted && formData.questionsCorrect && (
+                      <div className="mt-3 p-2 bg-white rounded text-sm text-amber-700 font-semibold">
+                        Accuracy: <strong>{((parseInt(formData.questionsCorrect) / parseInt(formData.questionsAttempted)) * 100).toFixed(2)}%</strong> (auto-calculated)
+                      </div>
+                    )}
                   </div>
                 )}
 
