@@ -64,6 +64,7 @@ export async function POST(req: Request) {
     if (data.uploadedNotesUrl !== undefined && data.uploadedNotesUrl !== null) createData.uploadedNotesUrl = data.uploadedNotesUrl
     if (data.totalMarks !== undefined && data.totalMarks !== null) createData.totalMarks = data.totalMarks
     if (data.obtainedMarks !== undefined && data.obtainedMarks !== null) createData.obtainedMarks = data.obtainedMarks
+    if (data.chapter !== undefined && data.chapter !== null) createData.chapter = data.chapter
 
     const studySession = (await (prisma.studySession.create as any)({
       data: createData

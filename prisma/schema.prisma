@@ -67,6 +67,9 @@ model StudySession {
   // Task type with conditional fields
   taskType           String   // "PastPaper" | "Revision" | "Flashcards" | "Notes" | custom
   
+  // Revision Fields
+  chapter            String?  // Chapter/topic studied in revision session
+  
   // Past Paper Fields
   paperCode          String?  // For full past papers: e.g., "9702/21"
   paperYear          Int?     // For full past papers
@@ -82,7 +85,7 @@ model StudySession {
   
   // Performance metrics
   deepFocusScore     Int      // 1-10 scale, required
-  questionsAttempted Int?     // Optional, deprecated in favor of totalMarks/obtainedMarks
+  questionsAttempted Int?     // Optional, number of questions attempted (for Practice Questions mode)
   questionsCorrect   Int?     // Optional, deprecated in favor of totalMarks/obtainedMarks
   totalMarks         Int?     // Total marks in the paper/quiz
   obtainedMarks      Int?     // Marks obtained

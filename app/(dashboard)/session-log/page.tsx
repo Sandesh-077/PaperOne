@@ -52,6 +52,9 @@ export default function SessionLogPage() {
     // Marks Tracking
     totalMarks: '',
     obtainedMarks: '',
+    // Revision & Practice Fields
+    chapter: '',
+    questionsAttempted: '',
     // Existing
     deepFocusScore: 5,
     questionsAttempted: '', // deprecated
@@ -215,10 +218,13 @@ export default function SessionLogPage() {
       // Mode-specific fields
       if (mode === 'exam') {
         payload.topic = formData.paperCode // For exam subject, topic = paper code
-        payload.totalMarks = formData.totalMarks ? parseInt(formData.totalMarks) : null
-        payload.obtainedMarks = formData.obtainedMarks ? parseInt(formData.obtainedMarks) : null
-        const accuracy = calculateAccuracy()
-        payload.accuracy = accuracy ? parseFloat(accuracy) : null
+        // Only require marks for Past Paper mode
+        if (formData.taskType === 'Past Paper') {
+          payload.totalMarks = formData.totalMarks ? parseInt(formData.totalMarks) : null
+          payload.obtainedMarks = formData.obtainedMarks ? parseInt(formData.obtainedMarks) : null
+          const accuracy = calculateAccuracy()
+          payload.accuracy = accuracy ? parseFloat(accuracy) : null
+        }
         payload.distractionCount = formData.distractionCount
       } else if (mode === 'custom') {
         payload.topic = '' // Custom mode doesn't require topic
@@ -248,6 +254,7 @@ export default function SessionLogPage() {
           notesSource: '',
           totalMarks: '',
           obtainedMarks: '',
+          chapter: '',
           deepFocusScore: 5,
           questionsAttempted: '',
           questionsCorrect: '',
@@ -471,39 +478,69 @@ export default function SessionLogPage() {
                   </div>
                 </div>
 
-                {/* Marks Section */}
-                <div className="bg-green-50 p-4 rounded border-l-4 border-green-500">
-                  <h3 className="font-semibold mb-3">📊 Marks Tracking</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Total Marks *</label>
-                      <input
-                        type="number"
-                        value={formData.totalMarks}
-                        onChange={(e) => setFormData({...formData, totalMarks: e.target.value})}
-                        placeholder="e.g., 100"
-                        required
-                        className="w-full border rounded px-3 py-2"
-                      />
+                {/* Marks Section - Only for Past Paper */}
+                {formData.taskType === 'Past Paper' && (
+                  <div className="bg-green-50 p-4 rounded border-l-4 border-green-500">
+                    <h3 className="font-semibold mb-3">📊 Marks Tracking</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold mb-2">Total Marks *</label>
+                        <input
+                          type="number"
+                          value={formData.totalMarks}
+                          onChange={(e) => setFormData({...formData, totalMarks: e.target.value})}
+                          placeholder="e.g., 100"
+                          required
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold mb-2">Obtained Marks *</label>
+                        <input
+                          type="number"
+                          value={formData.obtainedMarks}
+                          onChange={(e) => setFormData({...formData, obtainedMarks: e.target.value})}
+                          placeholder="e.g., 78"
+                          required
+                          className="w-full border rounded px-3 py-2"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold mb-2">Obtained Marks *</label>
-                      <input
-                        type="number"
-                        value={formData.obtainedMarks}
-                        onChange={(e) => setFormData({...formData, obtainedMarks: e.target.value})}
-                        placeholder="e.g., 78"
-                        required
-                        className="w-full border rounded px-3 py-2"
-                      />
-                    </div>
+                    {calculateAccuracy() && (
+                      <div className="mt-3 p-2 bg-white rounded text-sm text-green-700 font-semibold">
+                        Accuracy: <strong>{calculateAccuracy()}%</strong> (auto-calculated)
+                      </div>
+                    )}
                   </div>
-                  {calculateAccuracy() && (
-                    <div className="mt-3 p-2 bg-white rounded text-sm text-green-700 font-semibold">
-                      Accuracy: <strong>{calculateAccuracy()}%</strong> (auto-calculated)
-                    </div>
-                  )}
-                </div>
+                )}
+
+                {/* Revision: Chapter Field */}
+                {formData.taskType === 'Revision' && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Chapter / Topic</label>
+                    <input
+                      type="text"
+                      value={formData.chapter}
+                      onChange={(e) => setFormData({...formData, chapter: e.target.value})}
+                      placeholder="e.g., Chapter 5 - Thermodynamics"
+                      className="w-full border rounded px-3 py-2"
+                    />
+                  </div>
+                )}
+
+                {/* Practice Questions: Questions Count Field */}
+                {formData.taskType === 'Practice Questions' && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Number of Questions Attempted</label>
+                    <input
+                      type="number"
+                      value={formData.questionsAttempted}
+                      onChange={(e) => setFormData({...formData, questionsAttempted: e.target.value})}
+                      placeholder="e.g., 25"
+                      className="w-full border rounded px-3 py-2"
+                    />
+                  </div>
+                )}
 
                 {/* Deep Focus Score Slider */}
                 <div>
