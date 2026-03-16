@@ -225,6 +225,14 @@ export default function SessionLogPage() {
           const accuracy = calculateAccuracy()
           payload.accuracy = accuracy ? parseFloat(accuracy) : null
         }
+        // Add chapter for Revision mode
+        if (formData.taskType === 'Revision' && formData.chapter) {
+          payload.chapter = formData.chapter
+        }
+        // Add questions count for Practice Questions mode
+        if (formData.taskType === 'Practice Questions' && formData.questionsAttempted) {
+          payload.questionsAttempted = parseInt(formData.questionsAttempted)
+        }
         payload.distractionCount = formData.distractionCount
       } else if (mode === 'custom') {
         payload.topic = '' // Custom mode doesn't require topic
