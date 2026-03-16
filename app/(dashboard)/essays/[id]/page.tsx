@@ -169,6 +169,15 @@ export default function ViewEssayPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Prompt (optional)</label>
+              <textarea
+                value={formData.prompt}
+                onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
+                rows={2}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 font-normal"
+                placeholder="The essay prompt or question..."
+              />
+            </div>
 
             <div>
               <div className="flex justify-between items-center mb-2">

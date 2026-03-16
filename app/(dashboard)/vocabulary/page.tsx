@@ -14,12 +14,38 @@ interface Vocabulary {
   createdAt: string
 }
 
+interface WordTeaching {
+  word: string
+  definition: string
+  academicExample: string
+  synonyms: Array<{ word: string; nuance: string }>
+  gpTip: string
+}
+
+interface VocabularySuggestion {
+  original: string
+  alternatives: string[]
+  why: string
+}
+
+interface VocabularyFeedback {
+  suggestions: VocabularySuggestion[]
+}
+
 export default function VocabularyPage() {
   const router = useRouter()
   const { status } = useSession()
   const [vocabulary, setVocabulary] = useState<Vocabulary[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [activeTab, setActiveTab] = useState<'learn' | 'improve'>('learn')
+  const [learnWord, setLearnWord] = useState('')
+  const [improvePassage, setImprovePassage] = useState('')
+  const [teachingLoading, setTeachingLoading] = useState(false)
+  const [improveLoading, setImproveLoading] = useState(false)
+  const [teaching, setTeaching] = useState<WordTeaching | null>(null)
+  const [suggestions, setSuggestions] = useState<VocabularySuggestion[] | null>(null)
+  const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     word: '',
     definition: '',
@@ -92,6 +118,72 @@ export default function VocabularyPage() {
     }
   }
 
+  const handleTeachWord = async () => {
+    if (!learnWord.trim()) {
+      setError('Please enter a word')
+      return
+    }
+
+    setTeachingLoading(true)
+    setError('')
+    setTeaching(null)
+
+    try {
+      const response = await fetch('/api/ai/vocabulary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'word', word: learnWord.trim() })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        setError(err.error || 'Failed to teach word')
+        return
+      }
+
+      const result = await response.json()
+      setTeaching(result)
+    } catch (error) {
+      console.error('Error teaching word:', error)
+      setError('Failed to teach word. Please try again.')
+    } finally {
+      setTeachingLoading(false)
+    }
+  }
+
+  const handleImproveWriting = async () => {
+    if (!improvePassage.trim()) {
+      setError('Please enter some text')
+      return
+    }
+
+    setImproveLoading(true)
+    setError('')
+    setSuggestions(null)
+
+    try {
+      const response = await fetch('/api/ai/vocabulary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'passage', passage: improvePassage.trim() })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        setError(err.error || 'Failed to improve writing')
+        return
+      }
+
+      const result = await response.json()
+      setSuggestions(result.suggestions || [])
+    } catch (error) {
+      console.error('Error improving writing:', error)
+      setError('Failed to improve writing. Please try again.')
+    } finally {
+      setImproveLoading(false)
+    }
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
@@ -111,6 +203,181 @@ export default function VocabularyPage() {
         </button>
       </div>
 
+      {/* Learning Tabs */}
+      <div className="bg-white border-b border-gray-200 rounded-t-lg">
+        <div className="flex">
+          <button
+            onClick={() => {
+              setActiveTab('learn')
+              setError('')
+              setTeaching(null)
+              setSuggestions(null)
+            }}
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              activeTab === 'learn'
+                ? 'border-b-2 border-green-600 text-green-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            📚 Learn a Word
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('improve')
+              setError('')
+              setTeaching(null)
+              setSuggestions(null)
+            }}
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              activeTab === 'improve'
+                ? 'border-b-2 border-green-600 text-green-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            ✨ Improve My Writing
+          </button>
+        </div>
+      </div>
+
+      {/* Learn a Word Tab */}
+      {activeTab === 'learn' && (
+        <div className="bg-white p-6 rounded-b-lg shadow-sm border border-t-0 border-gray-200">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Enter a word to learn</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={learnWord}
+                  onChange={(e) => {
+                    setLearnWord(e.target.value)
+                    setError('')
+                  }}
+                  placeholder="e.g., serendipity, cogent, pragmatic..."
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+                <button
+                  onClick={handleTeachWord}
+                  disabled={teachingLoading}
+                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {teachingLoading ? '🔄 Teaching...' : '📖 Teach Me'}
+                </button>
+              </div>
+            </div>
+
+            {error && activeTab === 'learn' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            {teaching && (
+              <div className="space-y-4 mt-6 pt-6 border-t border-gray-200">
+                <div className="flex items-baseline gap-2 mb-4">
+                  <h3 className="text-2xl font-bold text-gray-900">{teaching.word}</h3>
+                </div>
+
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-green-900 mb-2">Definition</h4>
+                  <p className="text-green-800">{teaching.definition}</p>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-900 mb-2">Academic Example</h4>
+                  <p className="text-blue-800 italic">&ldquo;{teaching.academicExample}&rdquo;</p>
+                </div>
+
+                {teaching.synonyms && teaching.synonyms.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-gray-900">Synonyms & Nuance</h4>
+                    <div className="grid gap-2">
+                      {teaching.synonyms.map((syn, idx) => (
+                        <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                          <p className="font-semibold text-gray-900">{syn.word}</p>
+                          <p className="text-sm text-gray-700 mt-1">{syn.nuance}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h4 className="font-semibold text-purple-900 mb-2">💡 GP Tip</h4>
+                  <p className="text-purple-800">{teaching.gpTip}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Improve My Writing Tab */}
+      {activeTab === 'improve' && (
+        <div className="bg-white p-6 rounded-b-lg shadow-sm border border-t-0 border-gray-200">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Paste your passage to improve vocabulary</label>
+              <textarea
+                value={improvePassage}
+                onChange={(e) => {
+                  setImprovePassage(e.target.value)
+                  setError('')
+                }}
+                placeholder="Paste a paragraph from your essay or practice writing..."
+                rows={5}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              />
+            </div>
+
+            {error && activeTab === 'improve' && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={handleImproveWriting}
+              disabled={improveLoading}
+              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+            >
+              {improveLoading ? '🔄 Analyzing...' : '✨ Find Better Words'}
+            </button>
+
+            {suggestions && suggestions.length > 0 && (
+              <div className="space-y-3 mt-6 pt-6 border-t border-gray-200">
+                <h4 className="font-semibold text-gray-900">Vocabulary Suggestions</h4>
+                {suggestions.map((suggestion, idx) => (
+                  <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-lg font-semibold text-gray-900">{suggestion.original}</span>
+                      <span className="text-gray-400">→</span>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestion.alternatives.map((alt, altIdx) => (
+                          <span key={altIdx} className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">
+                            {alt}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-100">
+                      <strong>Why:</strong> {suggestion.why}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {suggestions && suggestions.length === 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-6">
+                <p className="text-green-700 font-medium">✓ Your vocabulary usage is strong! Consider adding more discipline-specific terms.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Add Word Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">Add New Vocabulary</h3>
@@ -195,7 +462,9 @@ export default function VocabularyPage() {
         </div>
       )}
 
-      <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Your Vocabulary</h2>
+        <div className="space-y-4">
         {vocabulary.length === 0 ? (
           <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center">
             <p className="text-gray-500">No vocabulary yet. Start building your word bank!</p>
@@ -249,6 +518,7 @@ export default function VocabularyPage() {
             </div>
           ))
         )}
+        </div>
       </div>
     </div>
   )

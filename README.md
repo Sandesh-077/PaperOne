@@ -1,236 +1,1636 @@
-# PaperOne - A-Level EGP Exam Training System
+# PaperOne - Comprehensive Project Documentation
 
-A systematic English General Paper (EGP) exam preparation web application built with Next.js, TypeScript, and PostgreSQL. Designed to help A-Level students improve from D → A/A\* through structured tracking of grammar rules, vocabulary, essays, errors, and daily study consistency.
-
-## Features
-
-### 📚 Core Learning Modules
-
-- **Grammar Rules Tracker** - Log and master essential grammar rules with examples
-- **Vocabulary Builder** - Learn new words with definitions and contextual sentences
-- **Essay Practice** - Write, store, and review essays with word count tracking
-- **Error Log** - Document mistakes and corrections to avoid repeating them
-
-### 📝 Practice Paper System
-
-- **Practice Paper Tracking** - Add, organize, and log practice papers by topic or as full papers
-- **Auto-completion** - Papers are auto-marked complete when all questions are logged
-- **Rework Functionality** - Reset completed papers to allow new attempts
-- **Question Tracking** - Mark individual questions as redo, focus, or review later
-- **Status Badges** - Visual indicators for tracked questions (redo/focus/later/completed)
-- **Comprehensive Logs** - View all practice sessions and progress
-
-### 📊 Progress Tracking
-
-- **Study Streak System** - Track daily study consistency with streak counter
-- **Progress Dashboard** - Visual overview of learning progress across all modules
-- **Statistics** - Comprehensive stats on learned content and study habits
-
-### 🔐 User Management
-
-- Secure email/password authentication
-- Personal learning environment for each student
-
-## Tech Stack
-
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
-- **Backend**: Next.js API Routes
-- **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: NextAuth.js
-- **Hosting**: Vercel-ready
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+
-- PostgreSQL database
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd PaperOne
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Set up environment variables:
-
-Create a `.env` file in the root directory:
-
-```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/paperone"
-
-# NextAuth
-NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-secret-key-change-this-in-production"
-```
-
-4. Set up the database:
-
-```bash
-# Generate Prisma Client
-npx prisma generate
-
-# Run migrations
-npx prisma migrate dev --name init
-
-# (Optional) Open Prisma Studio to view your database
-npx prisma studio
-```
-
-5. Run the development server:
-
-```bash
-npm run dev
-```
-
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-#### Database Reset (Development/Production)
-
-- **Reset all data for a user (recommended for production):**
-  - Call the API endpoint `/api/reset-user-data` (POST) while logged in. This deletes all your data but keeps your account.
-  - Example:
-    ```bash
-    curl -X POST https://your-app-url.vercel.app/api/reset-user-data
-    ```
-- **Reset the entire database (development only):**
-  - Run the script:
-    ```bash
-    npx tsx scripts/reset-db.ts
-    ```
-  - This deletes ALL users and data. Do not use in production!
-
-## Database Schema
-
-The application uses the following main models:
-
-- **User** - User accounts with authentication
-- **Subject** - Main subject (e.g., Physics, SAT Math)
-- **Topic** - Topics within a subject
-- **Subtopic** - Subtopics for granular tracking
-- **PracticePaper** - Practice papers (full or topical)
-- **PracticePaperLog** - Individual practice sessions for a paper
-- **PracticePaperQuestion** - Tracked questions (redo/focus/later/completed)
-- **GrammarRule** - Grammar rules with learning status
-- **Vocabulary** - Vocabulary entries with example sentences
-- **Essay** - Written essays with metadata
-- **Error** - Error log entries with corrections
-- **StudySession** - Daily study session tracking for streak calculation
-
-## Deployment
-
-### Vercel Deployment
-
-1. Push your code to a Git repository (GitHub, GitLab, or Bitbucket)
-
-2. Import your project in Vercel:
-
-   - Go to [vercel.com](https://vercel.com)
-   - Click "New Project"
-   - Import your repository
-
-3. Configure environment variables in Vercel:
-
-   - Add all variables from `.env`
-   - Set `DATABASE_URL` to your production PostgreSQL connection string
-   - Generate a secure `NEXTAUTH_SECRET`
-   - Set `NEXTAUTH_URL` to your production domain
-
-4. Deploy!
-
-### PostgreSQL Setup
-
-For production, you can use:
-
-- [Vercel Postgres](https://vercel.com/docs/storage/vercel-postgres)
-- [Neon](https://neon.tech)
-- [Supabase](https://supabase.com)
-- [Railway](https://railway.app)
-
-After setting up your database, run migrations:
-
-```bash
-npx prisma migrate deploy
-```
-
-## Project Structure
-
-```
-PaperOne/
-├── app/
-│   ├── (dashboard)/          # Protected dashboard routes
-│   │   ├── dashboard/        # Main dashboard
-│   │   ├── grammar/          # Grammar rules page
-│   │   ├── vocabulary/       # Vocabulary page
-│   │   ├── essays/           # Essays listing & detail pages
-│   │   └── errors/           # Error log page
-│   ├── api/                  # API routes
-│   │   ├── auth/             # NextAuth API routes
-│   │   ├── grammar/          # Grammar CRUD endpoints
-│   │   ├── vocabulary/       # Vocabulary CRUD endpoints
-│   │   ├── essays/           # Essays CRUD endpoints
-│   │   ├── errors/           # Errors CRUD endpoints
-│   │   ├── study-sessions/   # Study session tracking
-│   │   ├── stats/            # Statistics endpoint
-│   │   └── register/         # User registration
-│   ├── login/                # Login page
-│   ├── register/             # Registration page
-│   ├── layout.tsx            # Root layout
-│   ├── page.tsx              # Home page (redirects)
-│   └── globals.css           # Global styles
-├── components/               # Reusable components
-├── lib/                      # Utility functions
-│   └── prisma.ts            # Prisma client
-├── prisma/
-│   └── schema.prisma        # Database schema
-├── types/                    # TypeScript type definitions
-└── public/                   # Static assets
-```
-
-## Usage Guide
-
-### For Students
-
-1. **Register** - Create an account with your email
-2. **Dashboard** - View your progress and study streak
-3. **Grammar** - Add grammar rules you're learning with explanations and examples
-4. **Vocabulary** - Build your word bank with definitions and sentences
-5. **Essays** - Write practice essays and track your progress
-6. **Errors** - Log mistakes to learn from them
-7. **Daily Practice** - Log study sessions to maintain your streak
-
-### Exam Preparation Tips
-
-- Write at least one essay per day
-- Review your error log weekly
-- Master 5 new grammar rules per week
-- Learn 10 new vocabulary words per week
-- Use new vocabulary in your essays
-- Track your progress consistently
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-MIT License - feel free to use this project for your own learning or teaching purposes.
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
+**Version:** 1.1.0  
+**Last Updated:** March 15, 2026  
+**Author:** PaperOne Development Team
 
 ---
 
-Built with ❤️ for A-Level students preparing for English General Paper exams.
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Technology Stack](#technology-stack)
+3. [Architecture & Design Patterns](#architecture--design-patterns)
+4. [Database Schema Detailed Guide](#database-schema-detailed-guide)
+5. [API Routes Documentation](#api-routes-documentation)
+6. [Frontend Structure](#frontend-structure)
+7. [Authentication System](#authentication-system)
+8. [Core Features Explained](#core-features-explained)
+9. [Development Guide](#development-guide)
+10. [Deployment Guide](#deployment-guide)
+11. [Troubleshooting & Common Issues](#troubleshooting--common-issues)
+
+---
+
+## Project Overview
+
+### What is PaperOne?
+
+**PaperOne** is a comprehensive digital learning platform designed specifically for A-Level students preparing for examinations across multiple subjects including:
+
+- **A-Level Physics/Chemistry/Biology** (9701, 9702, 9709, 9618, 8021)
+- **SAT Preparation**
+- **General Education** (custom learning)
+
+The platform transforms traditional exam preparation by providing:
+
+- **Structured Study Tracking** - Log every study session with detailed metrics
+- **Performance Analytics** - Weekly and monthly performance summaries
+- **Topic Mastery System** - Track learning progress for individual topics
+- **Mistake Learning** - Document and reflect on errors to avoid repetition
+- **Note Management** - Organize study materials by subject/topic
+- **Practice Paper Tracking** - Monitor past paper practice and progress
+
+### Key Philosophy
+
+PaperOne operates on the principle that **structured tracking leads to measurable improvement**. Rather than generic study apps, this platform:
+
+- Forces explicit documentation of study activity
+- Provides immediate, data-driven feedback
+- Enables students to identify weakness patterns
+- Tracks long-term trends and improvements
+- Creates accountability through visible progress metrics
+
+---
+
+## Technology Stack
+
+### Frontend Framework
+
+- **Next.js 14.2.0** - React framework with App Router (server-side rendering, API routes, static generation)
+- **React 18.3.0** - Component-based UI library
+- **TypeScript 5.4.0** - Type-safe JavaScript for development
+- **Tailwind CSS 3.4.0** - Utility-first CSS framework for rapid styling
+
+### Backend Infrastructure
+
+- **Next.js API Routes** - Serverless backend endpoints (no separate server needed)
+- **Node.js Runtime** - JavaScript/TypeScript execution environment
+
+### Database & ORM
+
+- **PostgreSQL** - Relational database (ACID-compliant, production-grade)
+- **Prisma 5.10.0** - Type-safe ORM that generates client based on schema
+  - Auto-generates TypeScript types from schema
+  - Migration management system
+  - Built-in database introspection
+  - Connection pooling support
+
+### Authentication & Security
+
+- **NextAuth.js 4.24.0** - Complete authentication solution
+  - JWT-based stateless sessions
+  - Credentials provider (email/password)
+  - Built-in CSRF protection
+  - Callback hooks for custom logic
+- **bcryptjs 2.4.3** - Password hashing library
+  - Uses bcrypt algorithm with salt rounds
+  - Industry standard for password security
+
+### Developer Tools
+
+- **ESLint** - Code quality linting
+- **Autoprefixer** - CSS vendor prefix automation
+- **PostCSS** - CSS transformation tool
+- **Nodemailer & Resend** - Email services for OTP and password reset
+
+### Deployment
+
+- **Vercel** - Serverless deployment platform (built for Next.js)
+- **Vercel Postgres** - Managed PostgreSQL database as a service
+
+---
+
+## Architecture & Design Patterns
+
+### Overall Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Client (Browser)                          │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Next.js Pages (React Components + TypeScript)         │  │
+│  │  ├── Auth Pages (login, register, forgot-password)     │  │
+│  │  └── Dashboard Pages (protected routes)                │  │
+│  │      ├── Main Dashboard                                │  │
+│  │      ├── Study Sessions                                │  │
+│  │      ├── Topic Management                              │  │
+│  │      ├── Mistake Logs                                  │  │
+│  │      └── Analytics & Reports                           │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ HTTP/HTTPS
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Next.js Backend (Node.js)                       │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  API Routes (/app/api/*)                               │  │
+│  │  ├── /api/auth - NextAuth authentication endpoints     │  │
+│  │  ├── /api/study-sessions - Session CRUD operations    │  │
+│  │  ├── /api/topics - Topic management                    │  │
+│  │  ├── /api/mistake-log - Mistake tracking               │  │
+│  │  ├── /api/notes - Notes and files                      │  │
+│  │  └── /api/stats - Analytics calculations               │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ SQL Queries
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│            Prisma ORM & PostgreSQL Database                  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  User Accounts                                          │  │
+│  │  Study Sessions (timestamped activity logs)            │  │
+│  │  Topics & Subtopics (curriculum structure)             │  │
+│  │  Topic Mastery (tracking learning progress)            │  │
+│  │  Mistake Logs (error reflection & analysis)            │  │
+│  │  Weekly/Monthly Performance (aggregated metrics)       │  │
+│  │  Notes & Resources (study materials)                   │  │
+│  │  Practice Papers (past paper tracking)                 │  │
+│  └────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Architecture Principles
+
+#### 1. **Layered Architecture**
+
+- **Presentation Layer**: React components with TypeScript
+- **API Layer**: Next.js API routes (HTTP endpoints)
+- **Business Logic Layer**: Service functions in API routes
+- **Data Access Layer**: Prisma ORM for database operations
+
+#### 2. **Separation of Concerns**
+
+- **Pages** - UI rendering only
+- **API Routes** - Business logic and database operations
+- **Lib Files** - Utility functions and configurations
+- **Types** - TypeScript definitions (in `/types`)
+
+#### 3. **Single Responsibility Principle**
+
+Each API route handles one resource:
+
+- `/api/study-sessions` - Study session management
+- `/api/topics` - Topic lifecycle
+- `/api/mistake-log` - Mistake documentation
+- `/api/stats` - Analytics calculations
+
+#### 4. **Stateless Design**
+
+- No server-side session storage
+- JWT tokens contain all necessary information
+- Enables horizontal scaling
+
+---
+
+## Database Schema Detailed Guide
+
+### Schema Overview
+
+The database is organized around a **Study Tracking Core** with supporting systems for organization and analytics.
+
+### Model Relationships
+
+```
+User (1) ──────────┬──────────> StudySession (N)
+                   ├──────────> Subject (N)
+                   ├──────────> TopicMastery (N)
+                   ├──────────> MistakeLog (N)
+                   ├──────────> WeeklyPerformance (N)
+                   ├──────────> MonthSummary (N)
+                   ├──────────> Error (N)
+                   └──────────> UserConfig (1)
+
+Subject (1) ──────────┬──────────> Topic (N)
+                      ├──────────> PracticePaper (N)
+                      └──────────> Note (N)
+
+Topic (1) ────────────┬──────────> Subtopic (N)
+                      ├──────────> PracticePaper (N)
+                      └──────────> Note (N)
+
+Subtopic (1) ─────────────────────> Note (N)
+
+PracticePaper (1) ─────────────────> [User-defined questions]
+```
+
+### Core Models Explained
+
+#### **User Model**
+
+```prisma
+model User {
+  id              String
+  email           String @unique        // User's email (login identifier)
+  password        String                // Bcrypt-hashed password
+  name            String?               // Display name
+  otp             String?               // One-time password for verification
+  otpExpires      DateTime?             // OTP expiration timestamp
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  errors          Error[]               // Error logs
+  studySessions   StudySession[]        // Study activity logs
+  subjects        Subject[]             // Custom subjects
+  topicMastery    TopicMastery[]       // Learning progress per topic
+  mistakeLogs     MistakeLog[]         // Mistake documentation
+  weeklyPerformance WeeklyPerformance[] // Weekly aggregated metrics
+  monthSummary    MonthSummary[]       // Monthly aggregated metrics
+  config          UserConfig?           // User settings and customizations
+}
+```
+
+**Key Points:**
+
+- `email` is unique to prevent duplicate accounts
+- `password` is never stored in plain text (always hashed with bcryptjs)
+- `otp` and `otpExpires` enable email verification flows
+- Relations are one-to-many (one user can have many study sessions, topics, etc.)
+
+#### **StudySession Model** (Core Logging System)
+
+```prisma
+model StudySession {
+  id                String
+  userId            String
+
+  // === SESSION TIMING ===
+  date              DateTime          // Date of study session
+  startTime         DateTime?         // When study started (optional)
+  endTime           DateTime?         // When study ended (optional)
+  totalHours        Float             // Total duration in hours (calculated or entered)
+
+  // === SUBJECT & TOPIC ===
+  subject           String            // Subject code (9701, 9702, SAT, etc.)
+  topic             String            // Topic name (e.g., "Mechanics", "Organic Chemistry")
+
+  // === TASK TYPE ===
+  taskType          String            // Type of study: "PastPaper" | "Revision" | "Flashcards" | "Notes" | custom
+
+  // === PAST PAPER FIELDS (conditional) ===
+  paperCode         String?           // Paper identifier (e.g., "9702/21")
+  paperYear         Int?              // Year of paper (e.g., 2023)
+  isTopicalPaper    Boolean           // Is this a topical (specific topic) or full paper?
+  topicalPaperName  String?           // Name of topical paper if applicable
+  topicalSource     String?           // Source/origin of topical paper
+  uploadedPaperUrl  String?           // URL to uploaded PDF
+
+  // === NOTES FIELDS (conditional) ===
+  notesAuthor       String?           // Author/creator of notes
+  notesSource       String?           // Where notes are from
+  uploadedNotesUrl  String?           // URL to uploaded notes PDF
+
+  // === PERFORMANCE METRICS ===
+  deepFocusScore    Int               // 1-10 scale - how focused was the session?
+  questionsAttempted Int?             // (Deprecated) use totalMarks/obtainedMarks
+  questionsCorrect  Int?              // (Deprecated) use totalMarks/obtainedMarks
+  totalMarks        Int?              // Total marks available in the paper/quiz
+  obtainedMarks     Int?              // Marks obtained/earned
+  accuracy          Float?            // Auto-calculated: (obtainedMarks / totalMarks) * 100
+
+  // === MISTAKE TRACKING ===
+  mistakeType       String?           // Type of mistakes made: "Concept" | "Formula" | "Careless"
+
+  // === DISTRACTIONS ===
+  distractionCount  Int               // Number of times distracted during session
+
+  // === NOTES ===
+  notes             String? @db.Text  // Freeform notes about the session
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // === INDEXES (for query performance) ===
+  @@index([userId])   // Fast lookup by user
+  @@index([date])     // Fast lookup by date
+  @@index([subject])  // Fast lookup by subject
+  @@index([topic])    // Fast lookup by topic
+}
+```
+
+**Deep Dive - Why This Structure:**
+
+The StudySession model is designed to capture **everything about a study event** in one record:
+
+- Timing data enables calculation of study hours
+- Task type determines which optional fields are relevant
+- Performance metrics (accuracy, focus score, marks) feed into analytics
+- Mistake tracking identifies problem areas
+- Distractions reveal environmental/focus issues
+
+**Example CreateSession:**
+
+```typescript
+// Logging a 2-hour past paper session
+let studySession = await prisma.studySession.create({
+  data: {
+    userId: "user123",
+    date: new Date("2026-03-15"),
+    startTime: new Date("2026-03-15T14:00:00"),
+    endTime: new Date("2026-03-15T16:00:00"),
+    totalHours: 2,
+    subject: "9702", // Chemistry A-Level
+    topic: "Organic Chemistry",
+    taskType: "PastPaper",
+    paperCode: "9702/21",
+    paperYear: 2023,
+    uploadedPaperUrl: "https://uploads.example.com/9702_2023_paper1.pdf",
+    totalMarks: 105,
+    obtainedMarks: 87, // Student got 87/105
+    accuracy: 82.86, // Auto-calculated
+    deepFocusScore: 8, // Good focus
+    distractionCount: 2, // Got distracted twice
+    mistakeType: "Concept", // Made conceptual errors
+    notes: "Struggled with carbon bonding questions. Need to revise...",
+  },
+});
+```
+
+#### **TopicMastery Model** (Learning Progress Tracking)
+
+```prisma
+model TopicMastery {
+  id              String
+  userId          String
+  subject         String      // A-Level code
+  topicName       String      // e.g., "Mechanics", "Waves"
+
+  // MANUAL INPUTS
+  confidenceScore Int         // 1-5 scale: how confident in this topic? (1=confused, 5=expert)
+
+  // AUTO-CALCULATED FROM STUDY SESSIONS
+  sessionsLogged  Int         // Count of StudySession records for this topic+subject
+  lastRevised     DateTime?   // Most recent StudySession.date for this topic
+  needsRevision   Boolean     // True if: confidence <= 3 OR lastRevised > 7 days ago
+
+  @@unique([userId, subject, topicName])  // Prevent duplicate topic/user combos
+}
+```
+
+**Example Flow:**
+
+1. User logs first session: Chemistry "Thermodynamics"
+   - System creates TopicMastery(subject="9702", topicName="Thermodynamics")
+   - sessionsLogged = 1, lastRevised = today
+
+2. User logs another Thermodynamics session next week
+   - System updates: sessionsLogged = 2, lastRevised = today
+
+3. After 7 days without logging:
+   - needsRevision = true (auto-flagged for relearning)
+
+#### **MistakeLog Model** (Error Analysis & Reflection)
+
+```prisma
+model MistakeLog {
+  id              String
+  userId          String
+  date            DateTime    // When the mistake occurred
+  subject         String      // A-Level code
+  topic           String      // What topic was it about?
+
+  // MISTAKE DETAILS (all required - forces reflection)
+  whatWentWrong   String      // Description of the error
+  correctMethod   String      // What should have been done?
+  formulaOrConcept String     // Key formula/concept involved
+  mistakeType     String      // "Concept" | "Formula" | "Careless"
+
+  reviewed        Boolean     // Has student reviewed and understood the mistake?
+
+  @@index([userId])
+  @@index([date])
+  @@index([subject])
+  @@index([reviewed])   // Can query "unreviewed mistakes"
+}
+```
+
+**Educational Purpose:**
+This model forces students to engage in metacognition:
+
+- "What went wrong?" - Identify the error
+- "What's the correct method?" - Learn the right approach
+- "What formula/concept?" - Connect to underlying knowledge
+- "Mistake type?" - Categorize to identify patterns
+
+#### **WeeklyPerformance Model** (Aggregated Weekly Metrics)
+
+```prisma
+model WeeklyPerformance {
+  id              String
+  userId          String
+  subject         String
+  weekStartDate   DateTime    // Monday of the week
+  weekEndDate     DateTime    // Sunday of the week
+
+  // === STUDY HOURS COMPONENT ===
+  studyHours      Float       // Sum of totalHours from all sessions that week
+  studyHoursScore Float       // (studyHours / 35) * 25, capped at 25
+
+  // === ACCURACY COMPONENT ===
+  accuracy        Float       // Average accuracy from all sessions with marks
+  accuracyScore   Float       // accuracy * 0.30, capped at 30
+
+  // === FOCUS COMPONENT ===
+  avgFocusScore   Float       // Average deepFocusScore from all sessions
+  focusScore      Float       // (avgFocusScore / 10) * 20, capped at 20
+
+  // === PAST PAPERS COMPONENT ===
+  papersCompleted Int         // Count of sessions with taskType="PastPaper"
+  papersScore     Float       // (papersCompleted / 5) * 15, capped at 15
+
+  // === DISTRACTIONS COMPONENT ===
+  totalDistractions Int       // Sum of all distractionCount
+  distractionScore Float      // max(10 - (totalDistractions * 0.5), 0), capped at 10
+
+  // === OVERALL RATING ===
+  weeklyRating    Float       // Sum of all 5 scores = out of 100 possible points
+  gradeLabel      String      // "Elite" | "Strong" | "Building" | "Weak" | "Lock In"
+  deltaPreviousWeek Float?    // This week's rating - last week's rating (trend)
+
+  // === REFLECTION FIELDS ===
+  reflection      String?     // Student's end-of-week reflection
+  nextWeekGoal    String?     // Goal for next week
+  biggestWin      String?     // What went well this week?
+
+  @@unique([userId, subject, weekStartDate])
+}
+```
+
+**Scoring System Deep Dive:**
+
+The weekly grade is calculated from 5 components:
+
+| Component    | Max Points | Formula                     | Purpose                                                 |
+| ------------ | ---------- | --------------------------- | ------------------------------------------------------- |
+| Study Hours  | 25         | (hours / 35) × 25           | Incentivizes consistent study (35 hrs/week target)      |
+| Accuracy     | 30         | average_accuracy × 0.30     | Rewards correct answers                                 |
+| Focus        | 20         | (avg_focus_score / 10) × 20 | Rewards quality study                                   |
+| Papers       | 15         | (completed / 5) × 15        | Incentivizes past paper practice (5 papers/week target) |
+| Distractions | 10         | max(10 - (count × 0.5), 0)  | Penalizes distractions                                  |
+| **TOTAL**    | **100**    | Sum of all                  | Overall weekly performance                              |
+
+**Grade Labels:**
+
+- **Elite** (90-100) - Exceptional week
+- **Strong** (75-89) - Very good week
+- **Building** (60-74) - Making progress
+- **Weak** (45-59) - Needs improvement
+- **Lock In** (0-44) - Critical improvement needed
+
+#### **MonthSummary Model** (Aggregated Monthly Metrics)
+
+```prisma
+model MonthSummary {
+  id              String
+  userId          String
+  subject         String
+  monthYear       String      // Format: "2026-03" (March 2026)
+
+  // AGGREGATED FROM 4 WEEKS
+  totalStudyHours Float       // Sum of weekly studyHours across month
+  totalPapers     Int         // Sum of weekly papersCompleted
+  averageAccuracy Float       // Average of weekly accuracy values
+  bestWeekRating  Float       // Max rating achieved in any week
+  worstWeekRating Float       // Min rating achieved in any week
+  week4MinusWeek1 Float?      // Trend: Week 4 rating - Week 1 rating (improvement)
+
+  monthGrade      String      // "A*" | "A" | "B" | "C" | "D" | "Needs Work"
+}
+```
+
+#### **Subject & Topic Models** (Curriculum Organization)
+
+```prisma
+model Subject {
+  id          String
+  userId      String
+  name        String      // e.g., "Chemistry A2", "SAT Math"
+  type        String      // "alevel" | "sat" | "extra"
+  level       String?     // "AS" | "A2" for A-Level, "Paper 3" for SAT
+  color       String?     // For UI display
+  icon        String?     // For UI display
+
+  topics      Topic[]     // One subject has many topics
+  practicePapers PracticePaper[]
+  notes       Note[]
+}
+
+model Topic {
+  id          String
+  subjectId   String
+  subject     Subject @relation(...)
+  name        String      // e.g., "Mechanics"
+  description String?
+  order       Int         // Display order
+  completed   Boolean     // Is this topic fully completed?
+  completedAt DateTime?   // When was it marked complete?
+
+  subtopics   Subtopic[]  // Topics can have subtopics
+  practicePapers PracticePaper[]
+  notes       Note[]
+}
+
+model Subtopic {
+  id          String
+  topicId     String
+  topic       Topic @relation(...)
+  name        String      // e.g., "Newton's Laws"
+  description String?
+  order       Int
+  completed   Boolean
+  completedAt DateTime?
+
+  notes       Note[]
+}
+```
+
+#### **PracticePaper Model** (Past Paper Tracking)
+
+```prisma
+model PracticePaper {
+  id              String
+  subjectId       String
+  topicId         String?
+
+  paperName       String      // e.g., "2023 May/June Paper 1"
+  paperType       String      // "full" | "topical" | "printed"
+  pdfUrl          String?     // URL to PDF file
+  questionStart   String      // e.g., "1", "5a"
+  questionEnd     String      // e.g., "10", "8c"
+  totalQuestions  Int?        // Total question count
+
+  completed       Boolean     // All questions logged?
+  score           Int?        // Total score
+  totalMarks      Int?        // Total available marks
+  notes           String?
+
+  reminderDate    DateTime?   // When to practice again
+  reminderDays    Int?        // Days before next reminder
+}
+```
+
+#### **Note Model** (Study Materials)
+
+```prisma
+model Note {
+  id              String
+  subjectId       String?
+  topicId         String?
+  subtopicId      String?
+
+  title           String
+  content         String?
+  fileUrl         String?     // URL to PDF, image, video
+  fileType        String?     // "pdf" | "image" | "video" | "link"
+  lastViewedAt    DateTime?
+  lastPosition    String?     // Resume position (page number, timestamp)
+}
+```
+
+#### **UserConfig Model** (Customization)
+
+```prisma
+model UserConfig {
+  id              String
+  userId          String @unique
+
+  customSubjects  Json        // Array of { name: string, code: string }
+  customTaskTypes Json        // Array of custom task type names
+}
+```
+
+---
+
+## API Routes Documentation
+
+### API Route Architecture
+
+All API routes follow this pattern:
+
+```
+/app/api/[resource]/route.ts  → Handles GET, POST for that resource
+/app/api/[resource]/[id]/route.ts → Handles GET, PUT, DELETE for specific record
+```
+
+### Authentication Flow
+
+All protected routes must verify the user's session:
+
+```typescript
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  // Now safe to use session.user.id as authenticated user
+  const userId = session.user.id;
+  // ... proceed with database operations
+}
+```
+
+### Study Sessions Endpoints
+
+#### `GET /api/study-sessions`
+
+**Purpose:** Fetch user's study sessions
+
+**Query Parameters:**
+
+- `limit` (optional): Number of records to return (default: 50)
+- `offset` (optional): Skip this many records (for pagination)
+- `subject` (optional): Filter by subject
+- `startDate` (optional): Filter sessions after this date
+- `endDate` (optional): Filter sessions before this date
+
+**Response:**
+
+```typescript
+{
+  sessions: StudySession[],
+  total: number
+}
+```
+
+#### `POST /api/study-sessions`
+
+**Purpose:** Create a new study session
+
+**Request Body:**
+
+```typescript
+{
+  date: string (ISO date),
+  startTime?: string,
+  endTime?: string,
+  totalHours: number,
+  subject: string,
+  topic: string,
+  taskType: string,
+  deepFocusScore: number,
+  obtainedMarks?: number,
+  totalMarks?: number,
+  accuracy?: number,
+  distractionCount?: number,
+  notes?: string,
+  // ... other conditional fields based on taskType
+}
+```
+
+**Response:** Created StudySession object
+
+#### `GET /api/study-sessions/[id]`
+
+**Purpose:** Fetch a specific study session
+
+**Response:** StudySession object
+
+#### `PUT /api/study-sessions/[id]`
+
+**Purpose:** Update a study session
+
+**Response:** Updated StudySession object
+
+#### `DELETE /api/study-sessions/[id]`
+
+**Purpose:** Delete a study session
+
+**Response:** Deleted StudySession object
+
+### Topics Endpoints
+
+#### `GET /api/topics`
+
+**Purpose:** Fetch all topics for a subject
+
+**Query Parameters:**
+
+- `subject`: Subject code (required)
+- `includeMastery`: Include TopicMastery data? (boolean)
+
+**Response:**
+
+```typescript
+{
+  topics: Topic[],
+  mastery?: TopicMastery[]
+}
+```
+
+#### `POST /api/topics`
+
+**Purpose:** Create a new topic
+
+**Request Body:**
+
+```typescript
+{
+  subjectId: string,
+  name: string,
+  description?: string,
+  order?: number
+}
+```
+
+#### `GET /api/subtopics/[id]`
+
+**Purpose:** Fetch subtopics for a topic
+
+**Response:** Subtopic[]
+
+#### `POST /api/subtopics`
+
+**Purpose:** Create subtopic under a topic
+
+**Request Body:**
+
+```typescript
+{
+  topicId: string,
+  name: string,
+  description?: string
+}
+```
+
+### Mistake Log Endpoints
+
+#### `GET /api/mistake-log`
+
+**Purpose:** Fetch user's mistake log
+
+**Query Parameters:**
+
+- `subject` (optional)
+- `reviewed` (optional): boolean - filter by review status
+
+**Response:** MistakeLog[]
+
+#### `POST /api/mistake-log`
+
+**Purpose:** Log a new mistake
+
+**Request Body:**
+
+```typescript
+{
+  date: string,
+  subject: string,
+  topic: string,
+  whatWentWrong: string,
+  correctMethod: string,
+  formulaOrConcept: string,
+  mistakeType: "Concept" | "Formula" | "Careless"
+}
+```
+
+#### `PUT /api/mistake-log/[id]`
+
+**Purpose:** Update mistake (mark as reviewed, update details)
+
+**Request Body:** Partial MistakeLog
+
+### Weekly Performance Endpoints
+
+#### `GET /api/weekly-performance/[weekStartDate]`
+
+**Purpose:** Fetch weekly performance for a specific week
+
+**Response:**
+
+```typescript
+{
+  subject: string,
+  weekStartDate: DateTime,
+  weeklyRating: number,
+  gradeLabel: string,
+  studyHours: number,
+  accuracy: number,
+  // ... all performance metrics
+}
+```
+
+#### `GET /api/weekly-performance/[weekStartDate]/[subject]`
+
+**Purpose:** Fetch weekly performance for specific subject
+
+**Response:** WeeklyPerformance object
+
+---
+
+## Frontend Structure
+
+### File Organization
+
+```
+app/
+├── globals.css              # Global CSS (Tailwind imports)
+├── layout.tsx               # Root layout with NextAuth provider
+├── page.tsx                 # Home page (redirects to dashboard)
+├── providers.tsx            # SessionProvider wrapper
+│
+├── (dashboard)/              # Route group - shared layout
+│   ├── layout.tsx           # Dashboard layout (navigation, sidebar)
+│   ├── dashboard/
+│   │   └── page.tsx         # Main dashboard view
+│   ├── grammar/
+│   │   └── page.tsx
+│   ├── vocabulary/
+│   │   └── page.tsx
+│   ├── essays/
+│   │   ├── page.tsx         # Essays list
+│   │   ├── new/
+│   │   │   └── page.tsx     # Write new essay
+│   │   └── [id]/
+│   │       └── page.tsx     # View/edit essay
+│   └── [other modules]/
+│
+├── api/                      # API routes (backend endpoints)
+│   ├── auth/
+│   │   └── [...nextauth]/
+│   │       └── route.ts     # NextAuth handler
+│   ├── study-sessions/
+│   │   ├── route.ts         # GET/POST sessions
+│   │   └── [id]/
+│   │       └── route.ts     # GET/PUT/DELETE specific session
+│   └── [other endpoints]/
+│
+├── login/
+│   └── page.tsx
+├── register/
+│   └── page.tsx
+├── forgot-password/
+│   └── page.tsx
+
+components/
+└── Navigation.tsx           # Main navigation component
+
+lib/
+├── prisma.ts               # Prisma client singleton
+├── auth.ts                 # NextAuth configuration
+├── study-session.ts        # Study session utilities
+├── topics.ts               # Topic management utilities
+├── revision-scheduler.ts   # Scheduling logic
+└── essay-topics.ts        # Essay prompt data
+
+types/
+└── next-auth.d.ts         # NextAuth type extensions
+
+prisma/
+├── schema.prisma          # Database schema
+└── migrations/            # Migration history
+```
+
+### Key Page Components
+
+#### Dashboard Layout (`(dashboard)/layout.tsx`)
+
+- Main navigation/sidebar
+- Protected route guard
+- Consistent styling across dashboard
+
+#### Dashboard Page (`(dashboard)/dashboard/page.tsx`)
+
+- Widget layout with key metrics
+- Study session summary
+- Weekly performance graph
+- Topic mastery overview
+- Quick action buttons
+
+### Component Architecture
+
+All components are React Server Components by default (in App Router):
+
+```typescript
+// page.tsx (Server Component)
+export default async function DashboardPage() {
+  const session = await getServerSession()
+  const stats = await fetchDashboardStats(session.user.id)
+
+  return (
+    <div>
+      <StatCard data={stats} />
+      <ChartComponent data={stats.weeklyData} />
+    </div>
+  )
+}
+```
+
+Client-side interactivity uses `'use client'`:
+
+```typescript
+// Interactive component
+'use client'
+
+import { useState } from 'react'
+
+export function StudySessionForm() {
+  const [formData, setFormData] = useState(...)
+
+  const handleSubmit = async (e) => {
+    // Client-side form handling
+  }
+
+  return (...)
+}
+```
+
+---
+
+## Authentication System
+
+### How NextAuth Works in PaperOne
+
+#### 1. **Setup** (`lib/auth.ts`)
+
+```typescript
+export const authOptions: AuthOptions = {
+  providers: [
+    CredentialsProvider({
+      // Defines email/password login
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        // 1. Find user by email
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        // 2. Verify password using bcrypt
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password,
+        );
+
+        // 3. Return user object if valid (DO NOT return password!)
+        if (isPasswordValid) {
+          return { id: user.id, email, name };
+        }
+      },
+    }),
+  ],
+
+  session: {
+    strategy: "jwt", // Use JWT instead of database sessions
+  },
+
+  callbacks: {
+    // Add user.id to JWT token
+    async jwt({ token, user }) {
+      if (user) token.id = user.id;
+      return token;
+    },
+
+    // Add token info to session object
+    async session({ session, token }) {
+      if (session.user) session.user.id = token.id;
+      return session;
+    },
+  },
+};
+```
+
+#### 2. **Registration Flow**
+
+```typescript
+// /api/register route
+export async function POST(req: Request) {
+  const { email, password, name } = await req.json();
+
+  // Check if user exists
+  const existing = await prisma.user.findUnique({
+    where: { email },
+  });
+  if (existing) throw new Error("User already exists");
+
+  // Hash password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create user
+  const user = await prisma.user.create({
+    data: {
+      email,
+      password: hashedPassword,
+      name,
+      config: { create: {} }, // Create default config
+    },
+  });
+
+  return Response.json({ success: true });
+}
+```
+
+#### 3. **Login Flow**
+
+1. User enters credentials on `/login`
+2. Form submits to NextAuth sessions callback
+3. NextAuth calls `authorize()` function
+4. Password is verified with bcryptjs
+5. JWT token is created with user.id
+6. Cookie with token is set (httpOnly for security)
+7. User is redirected to dashboard
+
+#### 4. **Protected Routes**
+
+```typescript
+// Any page can check authentication:
+const session = await getServerSession(authOptions);
+
+if (!session) {
+  redirect("/login"); // Force login
+}
+```
+
+#### 5. **Password Security**
+
+- **Hashing Algorithm**: bcrypt with salt rounds = 10
+- **Never Stored**: Plain passwords never stored in database
+- **Comparison**: Used bcryptjs.compare() to verify
+- **Hash Cost**: ~100ms per hash (intentionally slow to prevent brute force)
+
+---
+
+## Core Features Explained
+
+### Feature 1: Study Session Logging
+
+**What It Does:**
+Students record every study session with comprehensive metadata about what they studied, how well they did, and how focused they were.
+
+**Why It Matters:**
+
+- Creates accountability and habit tracking
+- Enables performance analysis
+- Identifies subject/topic weaknesses
+- Shows study duration trends
+
+**Data Captured Per Session:**
+
+```
+timing: date, startTime, endTime, totalHours
+content: subject, topic, taskType
+performance: accuracy, obtainedMarks, totalMarks, deepFocusScore
+environment: distractionCount
+mistakes: mistakeType categorization
+notes: freeform observations
+```
+
+**Data Analysis:**
+
+- Weekly aggregation calculates performance scores
+- Monthly trends show improvement
+- Subject-specific metrics guide revision priorities
+- Topic mastery tracking identifies weak areas
+
+### Feature 2: Topic Mastery System
+
+**What It Does:**
+Automatically tracks learning progress for each topic within each subject.
+
+**How It Works:**
+
+1. **Student logs first session for a topic**
+   - System creates TopicMastery record
+   - initializes: sessionsLogged=1, lastRevised=today
+
+2. **System tracks study frequency**
+   - Each session updates: sessionsLogged++, lastRevised=today
+   - After 7 days without studying: needsRevision=true
+
+3. **Student rates confidence**
+   - confidenceScore (1-5): their self-assessment
+   - System calculates: needsRevision = confidence ≤ 3 OR lastRevised > 7 days
+
+4. **Dashboard shows revision needed**
+   - Color-coded topics needing revisitation
+   - Suggested study order based on confidence + recency
+
+**Use Cases:**
+
+- "Which topics should I study this week?" → Check needsRevision=true
+- "Am I improving in Physics?" → Compare accuracy over time
+- "How prepared am I for Organic Chemistry?" → View sessionsLogged + lastRevised
+
+### Feature 3: Mistake Analysis
+
+**Educational Value:**
+Forces metacognitive reflection on errors.
+
+**Data Structure:**
+Each mistake requires:
+
+- **What went wrong?** (Error description)
+- **Correct method** (Proper approach)
+- **Formula/concept** (Key underlying knowledge)
+- **Mistake type** (Concept | Formula | Careless)
+- **Reviewed?** (Student has reflected and understood?)
+
+**Analytics Enabled:**
+
+- "What are my most common mistake types?" → Find patterns
+- "Which topics have most mistakes?" → Prioritize revision
+- "How many mistakes am I still not reviewing?" → Track reflection rate
+
+### Feature 4: Weekly Performance Scoring
+
+**Scoring System:**
+
+The system evaluates weekly performance across 5 dimensions:
+
+**1. Study Hours (25 points)**
+
+- Formula: (totalHours / 35) × 25
+- Target: 35 hours/week (7 hours/day)
+- Rationale: Consistency is key for exam prep
+
+**2. Accuracy (30 points)**
+
+- Formula: (averageAccuracy) × 0.30
+- Highest weight component
+- Encourages correct answers over volume
+
+**3. Focus Quality (20 points)**
+
+- Formula: (avgFocusScore / 10) × 20
+- Based on student's self-rated deepFocusScore (1-10)
+- Discourages distracted study sessions
+
+**4. Past Papers (15 points)**
+
+- Formula: (papersCompleted / 5) × 15
+- Target: 5 past papers/week
+- Realistic exam simulation practice
+
+**5. Distraction Penalty (10 points)**
+
+- Formula: max(10 - (totalDistractions × 0.5), 0)
+- Each distraction costs 0.5 points
+- Encourages focus environment
+
+**Total:** 0-100 points per week
+
+**Grade Translation:**
+
+- Elite: 90-100 (A+ week)
+- Strong: 75-89 (Solid week)
+- Building: 60-74 (Progressive week)
+- Weak: 45-59 (Needs effort)
+- Lock In: 0-44 (Critical focus needed)
+
+**Trend Analysis:**
+
+- `deltaPreviousWeek`: This week's rating - last week's rating
+- Positive delta = progressing
+- Negative delta = declining
+
+### Feature 5: User Configuration
+
+**What Customizes:**
+
+```json
+{
+  "customSubjects": [
+    { "name": "Special Math", "code": "MATH_SPECIAL" },
+    { "name": "Extended Physics", "code": "PHYS_EXT" }
+  ],
+  "customTaskTypes": ["Group Study", "VidyoWatch", "PastPaperDrill"]
+}
+```
+
+**Why It Matters:**
+
+- Users have different curricula (A-Level, IB, SAT, etc.)
+- Different schools use different task categories
+- Flexibility to adapt to student's exact needs
+
+---
+
+## Development Guide
+
+### Setting Up Local Development
+
+#### **Prerequisites**
+
+```bash
+node --version  # Should be v18 or higher
+npm --version   # Should be v9 or higher
+postgres --version  # PostgreSQL should be running
+```
+
+#### **1. Initial Setup**
+
+```bash
+# Clone and install
+git clone <repo>
+cd PaperOne
+npm install
+
+# Environment setup
+cp .env.example .env
+# Edit .env with your DATABASE_URL and NEXTAUTH_SECRET
+```
+
+#### **2. Database Setup**
+
+```bash
+# Generate Prisma Client (makes database types)
+npx prisma generate
+
+# Create initial schema in database
+npx prisma migrate dev --name init
+
+# (Optional) Open Prisma Studio to view data
+npx prisma studio
+```
+
+#### **3. Development Server**
+
+```bash
+npm run dev
+# Server running at http://localhost:3000
+```
+
+### Common Development Tasks
+
+#### **Adding a New Feature**
+
+1. **Update Prisma Schema**
+
+```prisma
+model NewFeature {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // ... fields
+  createdAt DateTime @default(now())
+}
+```
+
+2. **Generate Migration**
+
+```bash
+npx prisma migrate dev --name add_new_feature
+```
+
+3. **Create API Route** (`/app/api/new-feature/route.ts`)
+
+```typescript
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
+
+  const features = await prisma.newFeature.findMany({
+    where: { userId: session.user.id },
+  });
+
+  return Response.json(features);
+}
+```
+
+4. **Create UI Component** (in relevant dashboard page)
+
+5. **Test API** with `npx prisma studio`
+
+#### **Running Database Migrations**
+
+```bash
+# After schema changes
+npx prisma migrate dev --name migration_name
+
+# Deploy to production
+npx prisma migrate deploy
+
+# Check migration status
+npx prisma migrate status
+```
+
+#### **Debugging Database Issues**
+
+```bash
+# View all data interactively
+npx prisma studio
+
+# Check if all migrations applied
+npx prisma migrate status
+
+# Reset database (development only!)
+npx prisma migrate reset
+```
+
+### Code Style & Conventions
+
+**TypeScript Usage:**
+
+- Always type function parameters and returns
+- Use interface for data structures
+- Avoid `any` type
+
+**Naming Conventions:**
+
+- Files: camelCase (studySession.ts)
+- Components: PascalCase (StudySessionForm.tsx)
+- Databases: PascalCase models (StudySession)
+- Variables: camelCase
+
+**Error Handling:**
+
+```typescript
+try {
+  // Operation
+} catch (error) {
+  console.error("Operation failed:", error);
+  return new Response("Error message", { status: 500 });
+}
+```
+
+---
+
+## Deployment Guide
+
+### Deploying to Vercel (Recommended)
+
+#### **1. Prepare Repository**
+
+```bash
+# Ensure all changes are committed
+git add .
+git commit -m "Ready for deployment"
+git push origin main
+```
+
+#### **2. Create Vercel Project**
+
+- Go to [vercel.com](https://vercel.com)
+- Click "New Project"
+- Import your GitHub repository
+- Select PaperOne project
+
+#### **3. Configure Environment Variables**
+
+In Vercel dashboard, add to Environment Variables:
+
+```
+DATABASE_URL=postgresql://...  (from Vercel Postgres)
+NEXTAUTH_SECRET=generated-secret-here
+NEXTAUTH_URL=https://yourdomain.vercel.app
+```
+
+#### **4. Deploy**
+
+```bash
+# Push to main branch triggers automatic deployment
+git push origin main
+```
+
+#### **5. Run Migrations**
+
+After first deploy:
+
+```bash
+# Via Vercel CLI
+vercel env pull .env.production.local
+npx prisma migrate deploy
+```
+
+### Setting Up Vercel Postgres
+
+#### **1. Add Vercel Postgres**
+
+- Go to Vercel Project > Storage
+- Click "Create Database"
+- Select PostgreSQL
+- Accept terms
+- Copy connection string to DATABASE_URL
+
+#### **2. Verify Connection**
+
+```bash
+psql <connection-string>
+# Should connect successfully
+```
+
+### Alternative Hosting Options
+
+#### **Railway.app**
+
+```
+1. Sign up at railway.app
+2. Create PostgreSQL database
+3. Copy connection string
+4. Deploy Next.js app
+5. Set environment variables
+```
+
+#### **Neon PostgreSQL + Vercel**
+
+```
+1. Create account at neon.tech
+2. Create new project
+3. Copy connection string
+4. Connect to Vercel
+5. Deploy
+```
+
+---
+
+## Troubleshooting & Common Issues
+
+### Issue: "Column does not exist" Error
+
+**Symptom:**
+
+```
+Invalid `prisma.studySession.create()` invocation:
+The column `createdAt` does not exist in the current database.
+```
+
+**Root Cause:**
+Database schema doesn't match Prisma schema. Likely migrations weren't applied.
+
+**Solution:**
+
+```bash
+# View migration status
+npx prisma migrate status
+
+# Apply pending migrations
+npx prisma migrate deploy
+```
+
+### Issue: "Can't reach database server"
+
+**Symptom:**
+
+```
+Error: P1001: Can't reach database server at `localhost:5432`
+```
+
+**Causes & Solutions:**
+
+1. **PostgreSQL not running:**
+
+   ```bash
+   # macOS
+   brew services start postgresql
+
+   # Windows
+   # Start PostgreSQL service from Services app
+
+   # Linux
+   sudo systemctl start postgresql
+   ```
+
+2. **Wrong DATABASE_URL:**
+
+   ```bash
+   # Check .env file
+   echo $DATABASE_URL
+
+   # Format should be:
+   # postgresql://username:password@localhost:5432/dbname
+   ```
+
+3. **Database doesn't exist:**
+   ```bash
+   createdb paperone
+   ```
+
+### Issue: "NextAuth_URL or NEXTAUTH_SECRET not set"
+
+**Symptom:**
+Authentication pages not working, redirects failing.
+
+**Solution:**
+
+```env
+# .env file
+NEXTAUTH_URL="http://localhost:3000"  (for dev)
+NEXTAUTH_URL="https://yourdomain.com" (for production)
+NEXTAUTH_SECRET="openssl rand -base64 32"
+```
+
+### Issue: Type Errors After Schema Changes
+
+**Symptom:**
+
+```
+Property 'newField' does not exist on type 'StudySession'
+```
+
+**Solution:**
+
+```bash
+# Regenerate Prisma Client with new types
+npx prisma generate
+```
+
+### Issue: Prisma Client Generator Issues
+
+**Symptom:**
+
+```
+@prisma/client was not installed
+```
+
+**Solution:**
+
+```bash
+# Reinstall packages
+rm -rf node_modules
+npm install
+
+# Regenerate client
+npx prisma generate
+```
+
+### Performance Optimization
+
+#### **Slow Queries**
+
+```typescript
+// Bad - fetches all data
+const sessions = await prisma.studySession.findMany({
+  where: { userId },
+});
+
+// Good - only fetch needed fields
+const sessions = await prisma.studySession.findMany({
+  where: { userId },
+  select: {
+    id: true,
+    date: true,
+    subject: true,
+    accuracy: true, // Only fields needed
+  },
+  take: 50, // Limit results
+});
+```
+
+#### **N+1 Query Problem**
+
+```typescript
+// Bad - loads user for each session (N+1 queries)
+const sessions = await prisma.studySession.findMany({ where: { userId } });
+const sessionUsers = sessions.map((s) => s.user); // Additional query per session
+
+// Good - include relation in one query
+const sessions = await prisma.studySession.findMany({
+  where: { userId },
+  include: { user: true }, // Loaded in same query
+});
+```
+
+#### **Database Indexes**
+
+Ensure all frequently-filtered fields have indexes:
+
+```prisma
+model StudySession {
+  // These are indexed for fast queries
+  @@index([userId])
+  @@index([date])
+  @@index([subject])
+}
+```
+
+---
+
+## Summary & Key Takeaways
+
+### Project Philosophy
+
+PaperOne is built on the principle that **data-driven learning beats guesswork**. Every system (session logging, mistake analysis, weekly scoring) is designed to create visibility into learning patterns.
+
+### Technical Highlights
+
+- **Serverless Architecture** - Scales automatically, no server management
+- **Type Safety** - TypeScript + Prisma prevents runtime errors
+- **Database Integrity** - PostgreSQL ensures data consistency
+- **Authentication** - JWT-based, secure, scalable
+
+### Key Models to Understand
+
+1. **StudySession** - The core data entry point (everything else derives from this)
+2. **TopicMastery** - Tracks learning progress per topic
+3. **WeeklyPerformance** - Aggregated metrics with 5-component scoring
+4. **MistakeLog** - Forces reflective learning
+
+### Development Workflow
+
+1. Identify feature requirements
+2. Update Prisma schema
+3. Create migration
+4. Build API routes
+5. Create UI components
+6. Test with Prisma Studio
+7. Deploy and monitor
+
+---
+
+**For questions or issues, refer to the README.md, ARCHITECTURE.md, or QUICKSTART.md files in the repository root.**

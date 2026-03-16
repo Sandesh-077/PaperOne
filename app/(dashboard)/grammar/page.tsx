@@ -14,12 +14,30 @@ interface GrammarRule {
   createdAt: string
 }
 
+interface GrammarError {
+  original: string
+  corrected: string
+  explanation: string
+  type: 'grammar' | 'punctuation' | 'register' | 'tense'
+}
+
+interface GrammarFeedback {
+  errors: GrammarError[]
+  correctedText: string
+  overallComment: string
+  score: number
+}
+
 export default function GrammarPage() {
   const router = useRouter()
   const { status } = useSession()
   const [rules, setRules] = useState<GrammarRule[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [checkerText, setCheckerText] = useState('')
+  const [checkingGrammar, setCheckingGrammar] = useState(false)
+  const [feedback, setFeedback] = useState<GrammarFeedback | null>(null)
+  const [checkerError, setCheckerError] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     explanation: '',
@@ -94,6 +112,60 @@ export default function GrammarPage() {
     }
   }
 
+  const checkGrammar = async () => {
+    if (!checkerText.trim()) {
+      setCheckerError('Please enter some text to check')
+      return
+    }
+
+    if (checkerText.length > 2000) {
+      setCheckerError('Text must be under 2000 characters')
+      return
+    }
+
+    setCheckingGrammar(true)
+    setCheckerError('')
+    setFeedback(null)
+
+    try {
+      const response = await fetch('/api/ai/grammar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: checkerText })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        setCheckerError(error.error || 'Failed to check grammar')
+        return
+      }
+
+      const result = await response.json()
+      setFeedback(result)
+    } catch (error) {
+      console.error('Error checking grammar:', error)
+      setCheckerError('Failed to check grammar. Please try again.')
+    } finally {
+      setCheckingGrammar(false)
+    }
+  }
+
+  const copyToClipboard = () => {
+    if (feedback?.correctedText) {
+      navigator.clipboard.writeText(feedback.correctedText)
+    }
+  }
+
+  const getErrorTypeBadge = (type: string) => {
+    const styles: Record<string, string> = {
+      grammar: 'bg-red-100 text-red-700',
+      punctuation: 'bg-orange-100 text-orange-700',
+      register: 'bg-purple-100 text-purple-700',
+      tense: 'bg-cyan-100 text-cyan-700'
+    }
+    return styles[type] || 'bg-gray-100 text-gray-700'
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
@@ -113,6 +185,100 @@ export default function GrammarPage() {
         </button>
       </div>
 
+      {/* Grammar Checker Section */}
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900">Check Your Grammar</h3>
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-gray-700">Paste your text here (max 2000 characters)</label>
+              <span className={`text-xs ${checkerText.length > 1800 ? 'text-orange-600' : 'text-gray-500'}`}>
+                {checkerText.length} / 2000
+              </span>
+            </div>
+            <textarea
+              value={checkerText}
+              onChange={(e) => {
+                setCheckerText(e.target.value)
+                setFeedback(null)
+              }}
+              maxLength={2000}
+              placeholder="Enter a paragraph or essay excerpt to check for grammar, punctuation, register, and tense..."
+              rows={5}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {checkerError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+              {checkerError}
+            </div>
+          )}
+
+          <button
+            onClick={checkGrammar}
+            disabled={checkingGrammar || !checkerText.trim()}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            {checkingGrammar ? '🔄 Checking...' : '✓ Check Grammar'}
+          </button>
+
+          {feedback && (
+            <div className="space-y-4 mt-6 pt-6 border-t border-gray-200">
+              {/* Score and Comment */}
+              <div className="flex items-start gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4 flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-3xl font-bold text-blue-600">{feedback.score}</span>
+                    <span className="text-gray-600">/10</span>
+                  </div>
+                  <p className="text-sm text-gray-700">{feedback.overallComment}</p>
+                </div>
+              </div>
+
+              {/* Errors */}
+              {feedback.errors.length > 0 ? (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-gray-900">Errors Found ({feedback.errors.length})</h4>
+                  {feedback.errors.map((error, idx) => (
+                    <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <span className="line-through text-red-600 font-medium">{error.original}</span>
+                        <span className="text-gray-400">→</span>
+                        <span className="text-green-600 font-medium">{error.corrected}</span>
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ml-auto ${getErrorTypeBadge(error.type)}`}>
+                          {error.type}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-700">{error.explanation}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="text-green-700 font-medium">✓ No errors found! Your text is grammatically sound.</p>
+                </div>
+              )}
+
+              {/* Corrected Text */}
+              <div className="space-y-2">
+                <h4 className="font-semibold text-gray-900">Corrected Text</h4>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 relative">
+                  <p className="text-gray-800 whitespace-pre-wrap">{feedback.correctedText}</p>
+                  <button
+                    onClick={copyToClipboard}
+                    className="absolute top-3 right-3 bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded transition-colors"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add Rule Form */}
       {showForm && (
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">Add New Grammar Rule</h3>
@@ -196,7 +362,9 @@ export default function GrammarPage() {
         </div>
       )}
 
-      <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Your Grammar Rules</h2>
+        <div className="space-y-4">
         {rules.length === 0 ? (
           <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center">
             <p className="text-gray-500">No grammar rules yet. Add your first one!</p>
@@ -258,6 +426,7 @@ export default function GrammarPage() {
             </div>
           ))
         )}
+        </div>
       </div>
     </div>
   )

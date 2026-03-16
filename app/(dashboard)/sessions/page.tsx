@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
@@ -51,9 +51,10 @@ export default function SessionsPage() {
     } else if (status === 'authenticated') {
       fetchSessions()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, router])
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     try {
       setLoading(true)
       const params = new URLSearchParams()
@@ -70,8 +71,8 @@ export default function SessionsPage() {
         setSessions(data)
         
         // Extract unique subjects and task types
-        const uniqueSubjects = [...new Set(data.map((s: StudySession) => s.subject))]
-        const uniqueTaskTypes = [...new Set(data.map((s: StudySession) => s.taskType))]
+        const uniqueSubjects = [...new Set(data.map((s: StudySession) => s.subject))] as string[]
+        const uniqueTaskTypes = [...new Set(data.map((s: StudySession) => s.taskType))] as string[]
         setSubjects(uniqueSubjects.sort())
         setTaskTypes(uniqueTaskTypes.sort())
       }
@@ -80,14 +81,14 @@ export default function SessionsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterSubject, filterTaskType, filterStartDate, filterEndDate])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchSessions()
     }, 300)
     return () => clearTimeout(timer)
-  }, [filterSubject, filterTaskType, filterStartDate, filterEndDate])
+  }, [filterSubject, filterTaskType, filterStartDate, filterEndDate, fetchSessions])
 
   const handleEdit = (sess: StudySession) => {
     setEditingSession({ ...sess })
