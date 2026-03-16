@@ -19,8 +19,7 @@ const navigationGroups = [
     label: 'Skills',
     items: [
       { name: 'Essays', href: '/essays' },
-      { name: 'Grammar', href: '/grammar' },
-      { name: 'Vocabulary', href: '/vocabulary' },
+      { name: 'English Trainer', href: '/english-trainer' },
       { name: 'Mistake Log', href: '/mistake-log' },
     ]
   },
