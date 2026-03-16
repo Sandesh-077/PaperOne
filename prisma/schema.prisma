@@ -9,102 +9,106 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  otp       String?
+  id         String    @id @default(cuid())
+  email      String    @unique
+  password   String
+  name       String?
+  otp        String?
   otpExpires DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  errors            Error[]
-  studySessions     StudySession[]
-  subjects          Subject[]
-  topicMastery      TopicMastery[]
-  mistakeLogs       MistakeLog[]
-  weeklyPerformance WeeklyPerformance[]
-  monthSummary      MonthSummary[]
-  config            UserConfig?
-  examEntries       ExamEntry[]
-  revisionPlans     RevisionPlan[]
-  dailyTasks        DailyTask[]
-  essays            Essay[]
+  errors             Error[]
+  studySessions      StudySession[]
+  subjects           Subject[]
+  topicMastery       TopicMastery[]
+  mistakeLogs        MistakeLog[]
+  weeklyPerformance  WeeklyPerformance[]
+  monthSummary       MonthSummary[]
+  config             UserConfig?
+  examEntries        ExamEntry[]
+  revisionPlans      RevisionPlan[]
+  dailyTasks         DailyTask[]
+  essays             Essay[]
+  vocabularyProgress VocabularyProgress[]
+  writingPractices   WritingPractice[]
+  learningJournals   LearningJournal[]
+  grammarWeaknesses  GrammarWeaknessArea[]
 }
 
 model Error {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   category    String
-  description String   @db.Text
-  correction  String   @db.Text
-  context     String?  @db.Text
-  resolved    Boolean  @default(false)
+  description String    @db.Text
+  correction  String    @db.Text
+  context     String?   @db.Text
+  resolved    Boolean   @default(false)
   resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([userId])
 }
 
 // SINGLE SESSION LOG - Only place user enters study data
 model StudySession {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // Core session info
-  date               DateTime
-  startTime          DateTime? 
-  endTime            DateTime? 
-  totalHours         Float    @default(0)
-  
+  date       DateTime
+  startTime  DateTime?
+  endTime    DateTime?
+  totalHours Float     @default(0)
+
   // Subject & Topic
-  subject            String
-  topic              String
-  
+  subject String
+  topic   String
+
   // Task type with conditional fields
-  taskType           String   // "PastPaper" | "Revision" | "Flashcards" | "Notes" | custom
-  
+  taskType String // "PastPaper" | "Revision" | "Flashcards" | "Notes" | custom
+
   // Revision Fields
-  chapter            String?  // Chapter/topic studied in revision session
-  
+  chapter String? // Chapter/topic studied in revision session
+
   // Past Paper Fields
-  paperCode          String?  // For full past papers: e.g., "9702/21"
-  paperYear          Int?     // For full past papers
-  isTopicalPaper     Boolean  @default(false) // True if topical past paper
-  topicalPaperName   String?  // Name/topic of topical paper
-  topicalSource      String?  // Where topical paper is from
-  uploadedPaperUrl   String?  // URL to uploaded past paper PDF
-  
+  paperCode        String? // For full past papers: e.g., "9702/21"
+  paperYear        Int? // For full past papers
+  isTopicalPaper   Boolean @default(false) // True if topical past paper
+  topicalPaperName String? // Name/topic of topical paper
+  topicalSource    String? // Where topical paper is from
+  uploadedPaperUrl String? // URL to uploaded past paper PDF
+
   // Notes Fields
-  notesAuthor        String?  // Whose notes (author/source)
-  notesSource        String?  // Where the notes are from
-  uploadedNotesUrl   String?  // URL to uploaded notes PDF (required for Notes task)
-  
+  notesAuthor      String? // Whose notes (author/source)
+  notesSource      String? // Where the notes are from
+  uploadedNotesUrl String? // URL to uploaded notes PDF (required for Notes task)
+
   // Performance metrics
-  deepFocusScore     Int      // 1-10 scale, required
-  questionsAttempted Int?     // Optional, number of questions attempted (for Practice Questions mode)
-  questionsCorrect   Int?     // Optional, deprecated in favor of totalMarks/obtainedMarks
-  totalMarks         Int?     // Total marks in the paper/quiz
-  obtainedMarks      Int?     // Marks obtained
-  accuracy           Float?   // Auto-calculated if both above present
-  
+  deepFocusScore     Int // 1-10 scale, required
+  questionsAttempted Int? // Optional, number of questions attempted (for Practice Questions mode)
+  questionsCorrect   Int? // Optional, deprecated in favor of totalMarks/obtainedMarks
+  totalMarks         Int? // Total marks in the paper/quiz
+  obtainedMarks      Int? // Marks obtained
+  accuracy           Float? // Auto-calculated if both above present
+
   // Mistake tracking
-  mistakeType        String?  // "Concept" | "Formula" | "Careless" | null
-  
+  mistakeType String? // "Concept" | "Formula" | "Careless" | null
+
   // Distractions
-  distractionCount   Int      @default(0)
-  
+  distractionCount Int @default(0)
+
   // Session tracking
-  mistakeLogged      Boolean  @default(false)
-  
+  mistakeLogged Boolean @default(false)
+
   // Notes
-  notes              String?  @db.Text
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([date])
@@ -114,36 +118,36 @@ model StudySession {
 
 // User Configuration - for custom subjects and task types
 model UserConfig {
-  id                 String   @id @default(cuid())
-  userId             String   @unique
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  customSubjects     Json     @default("[]")  // Array of { name: string, code: string }
-  customTaskTypes    Json     @default("[]")  // Array of custom task type names
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customSubjects  Json @default("[]") // Array of { name: string, code: string }
+  customTaskTypes Json @default("[]") // Array of custom task type names
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Topic mastery tracking - auto-calculated from session log
 model TopicMastery {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  subject            String   // Dropdown: 9701|9702|9709|9618|8021
-  topicName          String
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject   String // Dropdown: 9701|9702|9709|9618|8021
+  topicName String
+
   // Manual inputs only
-  confidenceScore    Int      @default(3) // 1-5 scale
-  
+  confidenceScore Int @default(3) // 1-5 scale
+
   // Auto-calculated from session log
-  sessionsLogged     Int      @default(0) // Count of StudySession records for this topic
-  lastRevised        DateTime? // Most recent date where this topic appeared in session log
-  needsRevision      Boolean  @default(false) // Calculated: true if confidence <= 3 OR lastRevised > 7 days ago
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  sessionsLogged Int       @default(0) // Count of StudySession records for this topic
+  lastRevised    DateTime? // Most recent date where this topic appeared in session log
+  needsRevision  Boolean   @default(false) // Calculated: true if confidence <= 3 OR lastRevised > 7 days ago
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, subject, topicName])
   @@index([userId])
@@ -153,25 +157,25 @@ model TopicMastery {
 
 // Mistake log - separate from session log, for reflective analysis
 model MistakeLog {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  date               DateTime
-  subject            String   // Dropdown: 9701|9702|9709|9618|8021
-  topic              String
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date    DateTime
+  subject String // Dropdown: 9701|9702|9709|9618|8021
+  topic   String
+
   // Mistake details (all required)
-  whatWentWrong      String   @db.Text
-  correctMethod      String   @db.Text
-  formulaOrConcept   String   @db.Text
-  mistakeType        String   // "Concept" | "Formula" | "Careless"
-  
+  whatWentWrong    String @db.Text
+  correctMethod    String @db.Text
+  formulaOrConcept String @db.Text
+  mistakeType      String // "Concept" | "Formula" | "Careless"
+
   // Review flag
-  reviewed           Boolean  @default(false)
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  reviewed Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([date])
@@ -181,42 +185,42 @@ model MistakeLog {
 
 // Weekly performance - auto-calculated from session log
 model WeeklyPerformance {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  subject            String   // Dropdown
-  weekStartDate      DateTime // Monday of that week
-  weekEndDate        DateTime // Sunday of that week
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject       String // Dropdown
+  weekStartDate DateTime // Monday of that week
+  weekEndDate   DateTime // Sunday of that week
+
   // Auto-calculated scores per formula
-  studyHours         Float    @default(0)   // Sum of totalHours from session log that week
-  studyHoursScore    Float    @default(0)   // (studyHours / 35) * 25, capped at 25
-  
-  accuracy           Float    @default(0)   // Average of accuracy % from session log that week
-  accuracyScore      Float    @default(0)   // accuracy * 0.30, capped at 30
-  
-  avgFocusScore      Float    @default(0)   // Average of deepFocusScore from session log that week
-  focusScore         Float    @default(0)   // (avgFocusScore / 10) * 20, capped at 20
-  
-  papersCompleted    Int      @default(0)   // Count of sessions with taskType="PastPaper" that week
-  papersScore        Float    @default(0)   // (papersCompleted / 5) * 15, capped at 15
-  
-  totalDistractions  Int      @default(0)   // Sum of distractionCount that week
-  distractionScore   Float    @default(0)   // max(10 - (totalDistractions * 0.5), 0)
-  
-  weeklyRating       Float    @default(0)   // Sum of all 5 scores above = out of 100
-  gradeLabel         String   @default("Lock In") // "Elite" | "Strong" | "Building" | "Weak" | "Lock In"
-  
-  deltaPreviousWeek  Float?                 // weeklyRating minus previous week's rating
-  
+  studyHours      Float @default(0) // Sum of totalHours from session log that week
+  studyHoursScore Float @default(0) // (studyHours / 35) * 25, capped at 25
+
+  accuracy      Float @default(0) // Average of accuracy % from session log that week
+  accuracyScore Float @default(0) // accuracy * 0.30, capped at 30
+
+  avgFocusScore Float @default(0) // Average of deepFocusScore from session log that week
+  focusScore    Float @default(0) // (avgFocusScore / 10) * 20, capped at 20
+
+  papersCompleted Int   @default(0) // Count of sessions with taskType="PastPaper" that week
+  papersScore     Float @default(0) // (papersCompleted / 5) * 15, capped at 15
+
+  totalDistractions Int   @default(0) // Sum of distractionCount that week
+  distractionScore  Float @default(0) // max(10 - (totalDistractions * 0.5), 0)
+
+  weeklyRating Float  @default(0) // Sum of all 5 scores above = out of 100
+  gradeLabel   String @default("Lock In") // "Elite" | "Strong" | "Building" | "Weak" | "Lock In"
+
+  deltaPreviousWeek Float? // weeklyRating minus previous week's rating
+
   // Manual inputs at week end
-  reflection         String?  @db.Text     // What worked and what didn't
-  nextWeekGoal       String?  @db.Text     // Goal for next week
-  biggestWin         String?  @db.Text     // Biggest win this week
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  reflection   String? @db.Text // What worked and what didn't
+  nextWeekGoal String? @db.Text // Goal for next week
+  biggestWin   String? @db.Text // Biggest win this week
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, subject, weekStartDate])
   @@index([userId])
@@ -226,24 +230,24 @@ model WeeklyPerformance {
 
 // Month summary - aggregated from weekly data
 model MonthSummary {
-  id                 String   @id @default(cuid())
-  userId             String
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  subject            String   // Dropdown
-  monthYear          String   // "2026-03" format
-  
-  totalStudyHours    Float    @default(0)   // Sum across 4 weeks
-  totalPapers        Int      @default(0)   // Sum across 4 weeks
-  averageAccuracy    Float    @default(0)   // Average of weekly accuracy values
-  bestWeekRating     Float    @default(0)   // Max rating of the 4 weeks
-  worstWeekRating    Float    @default(0)   // Min rating of the 4 weeks
-  week4MinusWeek1    Float?                 // Week 4 rating - Week 1 rating (trend)
-  
-  monthGrade         String   @default("D") // "A*" | "A" | "B" | "C" | "D" | "Needs Work"
-  
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject   String // Dropdown
+  monthYear String // "2026-03" format
+
+  totalStudyHours Float  @default(0) // Sum across 4 weeks
+  totalPapers     Int    @default(0) // Sum across 4 weeks
+  averageAccuracy Float  @default(0) // Average of weekly accuracy values
+  bestWeekRating  Float  @default(0) // Max rating of the 4 weeks
+  worstWeekRating Float  @default(0) // Min rating of the 4 weeks
+  week4MinusWeek1 Float? // Week 4 rating - Week 1 rating (trend)
+
+  monthGrade String @default("D") // "A*" | "A" | "B" | "C" | "D" | "Needs Work"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([userId, subject, monthYear])
   @@index([userId])
@@ -252,83 +256,83 @@ model MonthSummary {
 
 // Subject tracking system for A-Level, SAT, and Extra Learning
 model Subject {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String   // e.g., "Physics AS", "Chemistry A2", "SAT Math"
-  type        String   // "alevel" | "sat" | "extra"
-  level       String?  // "AS" | "A2" | "Paper 3" | "Paper 4" (for A-Level)
-  color       String?  // For UI display
-  icon        String?  // For UI display
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String // e.g., "Physics AS", "Chemistry A2", "SAT Math"
+  type      String // "alevel" | "sat" | "extra"
+  level     String? // "AS" | "A2" | "Paper 3" | "Paper 4" (for A-Level)
+  color     String? // For UI display
+  icon      String? // For UI display
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  topics      Topic[]
+  topics         Topic[]
   practicePapers PracticePaper[]
-  notes       Note[]
+  notes          Note[]
 
   @@index([userId])
 }
 
 // Topics within a subject (e.g., "Mechanics", "Organic Chemistry")
 model Topic {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   subjectId   String
-  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   name        String
-  description String?  @db.Text
-  order       Int      @default(0)
-  completed   Boolean  @default(false)
+  description String?   @db.Text
+  order       Int       @default(0)
+  completed   Boolean   @default(false)
   completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  subtopics   Subtopic[]
+  subtopics      Subtopic[]
   practicePapers PracticePaper[]
-  notes       Note[]
+  notes          Note[]
 
   @@index([subjectId])
 }
 
 // Subtopics within a topic for granular tracking
 model Subtopic {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   topicId     String
-  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic       Topic     @relation(fields: [topicId], references: [id], onDelete: Cascade)
   name        String
-  description String?  @db.Text
-  order       Int      @default(0)
-  completed   Boolean  @default(false)
+  description String?   @db.Text
+  order       Int       @default(0)
+  completed   Boolean   @default(false)
   completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  notes       Note[]
+  notes Note[]
 
   @@index([topicId])
 }
 
 // Practice paper tracking with question ranges and PDF uploads
 model PracticePaper {
-  id              String   @id @default(cuid())
-  subjectId       String
-  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topicId         String?
-  topic           Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  paperName       String   // e.g., "2023 May/June Paper 1"
-  paperType       String   @default("full") // "full" | "topical" | "printed"
-  pdfUrl          String?  // URL to uploaded PDF file
-  questionStart   String   // e.g., "1" or "5a"
-  questionEnd     String   // e.g., "15" or "8c"
-  totalQuestions  Int?     // Total number of questions in paper (optional)
-  completed       Boolean  @default(false)
-  score           Int?
-  totalMarks      Int?
-  notes           String?  @db.Text
-  reminderDate    DateTime? // When to remind for next practice
-  reminderDays    Int?     // Days after which to remind (for recalculation)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(cuid())
+  subjectId      String
+  subject        Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId        String?
+  topic          Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  paperName      String // e.g., "2023 May/June Paper 1"
+  paperType      String    @default("full") // "full" | "topical" | "printed"
+  pdfUrl         String? // URL to uploaded PDF file
+  questionStart  String // e.g., "1" or "5a"
+  questionEnd    String // e.g., "15" or "8c"
+  totalQuestions Int? // Total number of questions in paper (optional)
+  completed      Boolean   @default(false)
+  score          Int?
+  totalMarks     Int?
+  notes          String?   @db.Text
+  reminderDate   DateTime? // When to remind for next practice
+  reminderDays   Int? // Days after which to remind (for recalculation)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@index([subjectId])
   @@index([topicId])
@@ -337,21 +341,21 @@ model PracticePaper {
 
 // Notes and file attachments for subjects/topics
 model Note {
-  id          String   @id @default(cuid())
-  subjectId   String?
-  subject     Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  topicId     String?
-  topic       Topic?   @relation(fields: [topicId], references: [id], onDelete: Cascade)
-  subtopicId  String?
-  subtopic    Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
-  title       String
-  content     String?  @db.Text
-  fileUrl     String?  // URL to uploaded file (past paper PDF, etc.)
-  fileType    String?  // "pdf" | "image" | "video" | "link"
+  id           String    @id @default(cuid())
+  subjectId    String?
+  subject      Subject?  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  topicId      String?
+  topic        Topic?    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  subtopicId   String?
+  subtopic     Subtopic? @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
+  title        String
+  content      String?   @db.Text
+  fileUrl      String? // URL to uploaded file (past paper PDF, etc.)
+  fileType     String? // "pdf" | "image" | "video" | "link"
   lastViewedAt DateTime?
   lastPosition String? // For resuming reading (page number, timestamp, etc.)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([subjectId])
   @@index([topicId])
@@ -360,23 +364,23 @@ model Note {
 
 // Exam planner - exam entry tracking
 model ExamEntry {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  subject         String   // Subject code
-  subjectName     String   // Display name
-  paperCode       String   // Paper code (e.g., "9702/21")
-  paperName       String   // Paper name
-  examDate        DateTime // Scheduled exam date
-  timeSlot        String   // "AM" or "PM"
-  
-  previousScore   Float?   // Previous score if available
-  targetScore     Float?   // Target score goal
-  color           String?  // For UI display
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject     String // Subject code
+  subjectName String // Display name
+  paperCode   String // Paper code (e.g., "9702/21")
+  paperName   String // Paper name
+  examDate    DateTime // Scheduled exam date
+  timeSlot    String // "AM" or "PM"
+
+  previousScore Float? // Previous score if available
+  targetScore   Float? // Target score goal
+  color         String? // For UI display
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([examDate])
@@ -384,49 +388,49 @@ model ExamEntry {
 
 // Revision plan - AI-generated study plan
 model RevisionPlan {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  generatedAt     DateTime @default(now())
-  firstExamDate   DateTime // First exam in the plan
-  lastExamDate    DateTime // Last exam in the plan
-  studyHoursPerDay Int    @default(4) // Recommended daily hours
-  isActive        Boolean  @default(true)
-  
-  planData        Json     // Full AI-generated plan serialized as JSON
-  
-  dailyTasks      DailyTask[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  generatedAt      DateTime @default(now())
+  firstExamDate    DateTime // First exam in the plan
+  lastExamDate     DateTime // Last exam in the plan
+  studyHoursPerDay Int      @default(4) // Recommended daily hours
+  isActive         Boolean  @default(true)
+
+  planData Json // Full AI-generated plan serialized as JSON
+
+  dailyTasks DailyTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
 }
 
 // Daily task - daily study assignments within a revision plan
 model DailyTask {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId          String
-  plan            RevisionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  
-  date            DateTime // Task date
-  sessionSlot     String   // e.g., "Morning", "Afternoon", "Evening"
-  subject         String   // Subject code
-  subjectName     String   // Display name
-  
-  taskDesc        String   @db.Text // Task description
-  taskType        String   // "Revision" | "PastPaper" | "TopicalReview" | "Practice"
-  phase           String   // "Foundational" | "Intermediate" | "Advanced" | "ExamPrep"
-  
-  completed       Boolean  @default(false)
-  completedAt     DateTime?
-  studySessionId  String?  // Link to StudySession if completed
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id     String       @id @default(cuid())
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId String
+  plan   RevisionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  date        DateTime // Task date
+  sessionSlot String // e.g., "Morning", "Afternoon", "Evening"
+  subject     String // Subject code
+  subjectName String // Display name
+
+  taskDesc String @db.Text // Task description
+  taskType String // "Revision" | "PastPaper" | "TopicalReview" | "Practice"
+  phase    String // "Foundational" | "Intermediate" | "Advanced" | "ExamPrep"
+
+  completed      Boolean   @default(false)
+  completedAt    DateTime?
+  studySessionId String? // Link to StudySession if completed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId, date])
   @@index([planId])
@@ -434,20 +438,189 @@ model DailyTask {
 
 // Essay tracking with AI feedback
 model Essay {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  title        String
-  topic        String?
-  content      String   @db.Text
-  
-  essayType    String?  // "full" | "introduction" | "conclusion" | "argument" | "counterclaim" | "rebuttal"
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title   String
+  topic   String?
+  content String  @db.Text
+
+  essayType    String? // "full" | "introduction" | "conclusion" | "argument" | "counterclaim" | "rebuttal"
   aiFeedback   Json?
   aiFeedbackAt DateTime?
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+// Daily vocabulary words for EGP/IELTS/SAT improvement
+model DailyWord {
+  id String @id @default(cuid())
+
+  word               String  @unique
+  definition         String  @db.Text
+  academicDefinition String? @db.Text // More formal/academic definition
+
+  // Examples and usage
+  exampleSentence String   @db.Text // Usage example
+  synonyms        String[] @default([]) // Related words
+  antonyms        String[] @default([]) // Opposite words
+
+  // Context information
+  category            String // "EGP" | "IELTS" | "SAT" | "General"
+  difficulty          Int     @default(3) // 1-5 scale
+  grammarPartOfSpeech String? // noun, verb, adjective, etc.
+
+  // Tips for usage
+  gpTip          String? @db.Text // Specific tip for Cambridge A-Level GP exams
+  commonMistakes String? @db.Text // How students commonly misuse this word
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userProgress   VocabularyProgress[]
+  journalEntries LearningJournal[]
+
+  @@index([category])
+  @@index([difficulty])
+}
+
+// Track which words user has learned or is learning
+model VocabularyProgress {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  wordId String
+  word   DailyWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  // Learning status
+  status          String @default("learning") // "learning" | "learned" | "needs_practice"
+  confidenceLevel Int    @default(0) // 1-5 scale
+
+  // Usage tracking
+  correctUsageCount   Int @default(0) // Times used correctly in writing
+  incorrectUsageCount Int @default(0) // Times used incorrectly
+  reviewCount         Int @default(0) // Times reviewed
+
+  // Timestamps
+  firstSeenAt     DateTime  @default(now())
+  lastPracticedAt DateTime?
+  learnedAt       DateTime? // When marked as "learned"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, wordId])
+  @@index([userId])
+  @@index([status])
+}
+
+// Writing practice attempts with AI assessment
+model WritingPractice {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Prompt/Scenario
+  title      String
+  prompt     String  @db.Text // The question or scenario given
+  difficulty String  @default("intermediate") // "beginner" | "intermediate" | "advanced"
+  focusArea  String? // Grammar area or vocabulary category for this exercise
+
+  // Student's response
+  studentWriting String @db.Text
+  wordCount      Int // Auto-calculated
+
+  // AI Feedback - Comprehensive assessment
+  grammarScore           Int? // 0-10
+  vocabularyScore        Int? // 0-10
+  sentenceStructureScore Int? // 0-10
+  overallScore           Int? // 0-10
+
+  // Detailed feedback stored as JSON
+  aiFeedback Json? // Contains:
+  // { grammarErrors: [], vocabularyUsageNotes: [], improvements: [], strengths: [] }
+
+  // Vocabulary usage in this attempt
+  wordsUsedCorrectly   String[] @default([]) // Words used correctly from learned vocab
+  wordsUsedIncorrectly String[] @default([]) // Words attempted but used incorrectly
+  newWordsIntroduced   String[] @default([]) // New words attempted
+
+  // Grammar analysis
+  grammarAreasFound String[] @default([]) // Grammar issues identified
+
+  // Feedback status
+  feedbackGeneratedAt DateTime?
+  studentReviewedAt   DateTime? // When student reviewed feedback
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Learning journal - track student's learning journey for each word
+model LearningJournal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  wordId String
+  word   DailyWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  // Student's understanding and notes
+  meaningNoted     String   @db.Text // Student's own summary of meaning
+  exampleSentences String[] @default([]) // Student-created example sentences
+  personalNotes    String?  @db.Text // Mnemonic, memory tricks, personal context
+
+  // Grammar context
+  grammarRulesApplied String[] @default([]) // What grammar rules applied when using this word
+
+  // Progress tracking
+  areasOfConfusion  String?  @db.Text // What the student finds confusing about this word
+  practiceScenarios String[] @default([]) // Scenarios where student forced to use word
+  attemptedQuizzes  Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, wordId])
+  @@index([userId])
+}
+
+// Track grammar weaknesses to identify focus areas
+model GrammarWeaknessArea {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Grammar rule/concept
+  grammarArea String // e.g., "Subject-Verb Agreement", "Tense Consistency", "Article Usage"
+  description String? @db.Text // Full description of the weakness
+
+  // Tracking instances
+  instanceCount     Int      @default(1) // How many times this error occurred
+  lastOccurrenceAt  DateTime @default(now())
+  firstOccurrenceAt DateTime @default(now())
+
+  // Focus level and practice
+  focusLevel       Int    @default(2) // 1-5, how urgent to focus on this
+  practiceAttempts Int    @default(0) // How many targeted exercises done
+  improvementRate  Float? // Percentage improvement over time
+
+  // Related context
+  contextExamples    String[] @default([]) // Examples of this error from student's work
+  suggestedResources String[] @default([]) // Links to explanations or exercises
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, grammarArea])
+  @@index([userId])
+  @@index([focusLevel])
 }

@@ -1,7 +1,7 @@
 # PaperOne - Comprehensive Project Documentation
 
-**Version:** 1.1.0  
-**Last Updated:** March 15, 2026  
+**Version:** 2.1.0  
+**Last Updated:** March 16, 2026  
 **Author:** PaperOne Development Team
 
 ---
@@ -700,6 +700,216 @@ export async function GET(req: Request) {
 
 **Purpose:** Delete a study session
 
+**Response:** Success message
+
+---
+
+### Grammar AI Endpoints
+
+#### `POST /api/ai/grammar`
+
+**Purpose:** Analyze text for grammar errors using Groq AI
+
+**Request Body:**
+
+```typescript
+{
+  text: string; // Plain text (max 2000 characters)
+}
+```
+
+**Response:**
+
+```typescript
+{
+  errors: Array<{
+    original: string,
+    corrected: string,
+    explanation: string,
+    type: 'grammar' | 'punctuation' | 'register' | 'tense'
+  }>,
+  correctedText: string,
+  overallComment: string,
+  score: number  // 0-10
+}
+```
+
+**Error Handling:**
+
+- `400`: Text exceeds 2000 characters
+- `401`: Unauthorized (no session)
+- `500`: AI service error
+
+---
+
+### Vocabulary AI Endpoints
+
+#### `POST /api/ai/vocabulary`
+
+**Purpose:** Learn vocabulary or improve writing suggestions using Gemini AI
+
+**Request Body - Learn Mode:**
+
+```typescript
+{
+  mode: "word",
+  word: string  // Single word to learn
+}
+```
+
+**Response - Learn Mode:**
+
+```typescript
+{
+  word: string,
+  definition: string,
+  academicExample: string,
+  synonyms: Array<{
+    word: string,
+    nuance: string
+  }>,
+  gpTip: string
+}
+```
+
+**Request Body - Improve Mode:**
+
+```typescript
+{
+  mode: "passage",
+  passage: string  // Text to improve
+}
+```
+
+**Response - Improve Mode:**
+
+```typescript
+{
+  suggestions: Array<{
+    original: string;
+    alternatives: string[];
+    why: string;
+  }>;
+}
+```
+
+**Error Handling:**
+
+- `400`: Invalid mode or missing required field
+- `401`: Unauthorized (no session)
+- `500`: AI service error
+
+---
+
+### Essay Endpoints
+
+#### `GET /api/essays`
+
+**Purpose:** Fetch all essays for the user
+
+**Response:**
+
+```typescript
+{
+  essays: Array<{
+    id: string;
+    title: string;
+    prompt?: string;
+    content: string;
+    wordCount: number;
+    essayType: string;
+    grade?: string;
+    aiFeedback?: object;
+    aiFeedbackAt?: string;
+    createdAt: string;
+  }>;
+}
+```
+
+#### `POST /api/essays`
+
+**Purpose:** Create a new essay
+
+**Request Body:**
+
+```typescript
+{
+  title: string,
+  prompt?: string,
+  content: string,
+  essayType: 'full' | 'introduction' | 'conclusion' | 'argument' | 'counterclaim' | 'rebuttal',
+  grade?: string,
+  notes?: string
+}
+```
+
+**Response:** Created Essay object
+
+#### `GET /api/essays/[id]`
+
+**Purpose:** Fetch a specific essay with AI feedback if available
+
+**Response:** Essay object with aiFeedback
+
+#### `PATCH /api/essays/[id]`
+
+**Purpose:** Update an essay
+
+**Request Body:** Partial Essay object (any fields to update)
+
+**Response:** Updated Essay object
+
+#### `DELETE /api/essays/[id]`
+
+**Purpose:** Delete an essay
+
+**Response:** Success message
+
+#### `POST /api/essays/[id]/feedback`
+
+**Purpose:** Generate AI feedback on essay using Gemini AI (Cambridge GP 8021 evaluation)
+
+**Response:**
+
+```typescript
+{
+  feedback: {
+    ao1: {
+      band: string,
+      score: number,
+      strengths: string[],
+      improvements: string[]
+    },
+    ao2: {
+      band: string,
+      score: number,
+      strengths: string[],
+      improvements: string[]
+    },
+    ao3: {
+      band: string,
+      score: number,
+      strengths: string[],
+      improvements: string[]
+    },
+    overall: {
+      total: string,    // "38/50"
+      grade: string,    // "A", "B", "C", "D", "E"
+      topFix: string,
+      topStrength: string
+    }
+  }
+}
+```
+
+---
+
+### Weekly Performance Endpoints
+
+#### `GET /api/weekly-performance/[weekStartDate]`
+
+**Purpose:** Delete a study session
+
 **Response:** Deleted StudySession object
 
 ### Topics Endpoints
@@ -838,21 +1048,38 @@ app/
 │   ├── dashboard/
 │   │   └── page.tsx         # Main dashboard view
 │   ├── grammar/
-│   │   └── page.tsx
+│   │   └── page.tsx         # Grammar checker + save rules
 │   ├── vocabulary/
-│   │   └── page.tsx
+│   │   └── page.tsx         # Learn words + improve writing
 │   ├── essays/
 │   │   ├── page.tsx         # Essays list
 │   │   ├── new/
 │   │   │   └── page.tsx     # Write new essay
 │   │   └── [id]/
-│   │       └── page.tsx     # View/edit essay
+│   │       └── page.tsx     # View/edit essay + AI feedback
+│   ├── session-log/
+│   │   └── page.tsx         # Log study sessions
+│   ├── sessions/
+│   │   └── page.tsx         # View all sessions + filters + edit
+│   ├── exam-planner/
+│   │   └── page.tsx         # Plan exams + generate revision
 │   └── [other modules]/
 │
 ├── api/                      # API routes (backend endpoints)
 │   ├── auth/
 │   │   └── [...nextauth]/
 │   │       └── route.ts     # NextAuth handler
+│   ├── ai/
+│   │   ├── grammar/
+│   │   │   └── route.ts     # POST AI grammar check
+│   │   └── vocabulary/
+│   │       └── route.ts     # POST AI vocabulary learn/improve
+│   ├── essays/
+│   │   ├── route.ts         # GET/POST essays
+│   │   └── [id]/
+│   │       ├── route.ts     # GET/PATCH/DELETE essay
+│   │       └── feedback/
+│   │           └── route.ts # POST essay AI feedback
 │   ├── study-sessions/
 │   │   ├── route.ts         # GET/POST sessions
 │   │   └── [id]/
@@ -1058,7 +1285,191 @@ if (!session) {
 
 ## Core Features Explained
 
-### Feature 1: Study Session Logging
+### Feature 1: AI-Powered Grammar Checker
+
+**What It Does:**
+Real-time grammar analysis using Groq AI (LLaMA 3.3 70B). Students paste text and receive detailed feedback on grammar, punctuation, register, and tense issues specific to Cambridge A-Level General Paper (8021).
+
+**How It Works:**
+
+1. Student pastes text (max 2000 characters) in grammar checker
+2. Groq AI analyzes for common errors:
+   - Subject-verb agreement
+   - Tense consistency
+   - Article usage (a/an/the)
+   - Prepositions
+   - Sentence fragments
+   - Informal words that should be academic
+3. System returns:
+   - **Error list** with original/corrected versions, explanations, and type badges
+   - **Overall score** (0-10)
+   - **Full corrected text** (copyable)
+   - **No errors state** with positive reinforcement
+
+**Data Structure:**
+
+```typescript
+GrammarFeedback {
+  errors: Array<{
+    original: string,
+    corrected: string,
+    explanation: string,
+    type: 'grammar' | 'punctuation' | 'register' | 'tense'
+  }>,
+  correctedText: string,
+  overallComment: string,
+  score: number (0-10)
+}
+```
+
+**API Route:** `POST /api/ai/grammar`
+
+**UI Features:**
+
+- Character counter (visual warning at 1800+)
+- Loading state during analysis
+- Color-coded error type badges
+- Copy button for corrected text
+- Separate section for saving grammar rules
+
+### Feature 2: AI-Powered Vocabulary Coach
+
+**What It Does:**
+Dual-mode vocabulary enhancement using Gemini 2.0 Flash AI. Learn new words with academic context or improve existing writing with better vocabulary suggestions.
+
+**Two Modes:**
+
+**Mode 1: Learn a Word**
+
+- Enter any word
+- Get:
+  - Clear definition
+  - Academic example sentence
+  - Synonyms with nuance explanations
+  - GP-specific tips (how this word impresses examiners)
+
+**Mode 2: Improve My Writing**
+
+- Paste any passage (essay, practice answer, etc.)
+- AI identifies 3-5 repetitive or weak vocabulary choices
+- For each suggestion:
+  - Shows original word
+  - Lists better alternatives
+  - Explains "why better" for learning
+
+**Data Structure - Learn Mode:**
+
+```typescript
+WordTeaching {
+  word: string,
+  definition: string,
+  academicExample: string,
+  synonyms: Array<{
+    word: string,
+    nuance: string  // How it differs from main word
+  }>,
+  gpTip: string  // Exam strategy tip
+}
+```
+
+**Data Structure - Improve Mode:**
+
+```typescript
+VocabularySuggestion {
+  original: string,
+  alternatives: string[],
+  why: string  // Explanation of improvement
+}
+```
+
+**API Route:** `POST /api/ai/vocabulary`
+
+**UI Features:**
+
+- Tab-based interface (Learn | Improve)
+- Responsive suggestion cards
+- Color-coded badges for alternatives
+- Contextual explanations
+
+### Feature 3: Essay Management with AI Feedback
+
+**What It Does:**
+Complete essay authoring and assessment system. Students write essays in multiple formats (full, introduction, conclusion, argument paragraph, counter-claim, rebuttal) and receive automated feedback aligned to Cambridge GP 8021 mark scheme.
+
+**Essay Types:**
+
+- Full Essay (complete response)
+- Introduction
+- Conclusion
+- Argument Paragraph
+- Counter-claim
+- Rebuttal
+
+**AI Feedback System:**
+
+Uses Gemini AI to evaluate essays against Cambridge criteria across 3 Assessment Objectives:
+
+**AO1: Content** (25 points)
+
+- Quality of ideas and arguments
+- Relevance to the prompt
+- Use of evidence/examples
+- Structural coherence
+
+**AO2: Language** (15 points)
+
+- Vocabulary range and accuracy
+- Sentence structures
+- Register (formal academic tone)
+- Grammar and spelling
+
+**AO3: Structure** (10 points)
+
+- Logical argument flow
+- Paragraph organization
+- Clear introduction/conclusion
+- Transitional phrases
+
+**Feedback Output:**
+
+```typescript
+EssayFeedback {
+  ao1: {
+    band: string,        // "A" | "B" | "C" | "D" | "E"
+    score: number,       // 0-25
+    strengths: string[],
+    improvements: string[]
+  },
+  ao2: { ... },
+  ao3: { ... },
+  overall: {
+    total: string,       // "38/50"
+    grade: string,       // "A" | "B" | "C" | "D" | "E"
+    topFix: string,      // Priority improvement
+    topStrength: string  // Key strength
+  }
+}
+```
+
+**API Routes:**
+
+- `GET /api/essays` - List all essays
+- `POST /api/essays` - Create new essay
+- `GET /api/essays/[id]` - Fetch single essay
+- `PATCH /api/essays/[id]` - Update essay
+- `DELETE /api/essays/[id]` - Delete essay
+- `POST /api/essays/[id]/feedback` - Generate AI feedback
+
+**UI Features:**
+
+- Essay type selector (6 pill buttons)
+- Word count tracker
+- AI feedback button with regeneration option
+- Three color-coded AO cards (Blue/Green/Purple)
+- Summary bar with score, grade, top priority, top strength
+- Full essay display with saved metadata
+
+### Feature 4: Study Session Logging
 
 **What It Does:**
 Students record every study session with comprehensive metadata about what they studied, how well they did, and how focused they were.
@@ -1079,6 +1490,7 @@ performance: accuracy, obtainedMarks, totalMarks, deepFocusScore
 environment: distractionCount
 mistakes: mistakeType categorization
 notes: freeform observations
+chapter: for revision sessions
 ```
 
 **Data Analysis:**
@@ -1087,8 +1499,15 @@ notes: freeform observations
 - Monthly trends show improvement
 - Subject-specific metrics guide revision priorities
 - Topic mastery tracking identifies weak areas
+- Filters: by subject, task type, date range, search term
 
-### Feature 2: Topic Mastery System
+**Session Editor:**
+
+- Modal interface for editing past sessions
+- Task-type specific fields shown conditionally
+- Full CRUD operations (Create, Read, Update, Delete)
+
+### Feature 5: Topic Mastery System
 
 **What It Does:**
 Automatically tracks learning progress for each topic within each subject.
@@ -1117,7 +1536,7 @@ Automatically tracks learning progress for each topic within each subject.
 - "Am I improving in Physics?" → Compare accuracy over time
 - "How prepared am I for Organic Chemistry?" → View sessionsLogged + lastRevised
 
-### Feature 3: Mistake Analysis
+### Feature 6: Mistake Analysis
 
 **Educational Value:**
 Forces metacognitive reflection on errors.
@@ -1137,7 +1556,7 @@ Each mistake requires:
 - "Which topics have most mistakes?" → Prioritize revision
 - "How many mistakes am I still not reviewing?" → Track reflection rate
 
-### Feature 4: Weekly Performance Scoring
+### Feature 7: Weekly Performance Scoring
 
 **Scoring System:**
 
@@ -1189,7 +1608,7 @@ The system evaluates weekly performance across 5 dimensions:
 - Positive delta = progressing
 - Negative delta = declining
 
-### Feature 5: User Configuration
+### Feature 8: User Configuration
 
 **What Customizes:**
 
@@ -1208,6 +1627,293 @@ The system evaluates weekly performance across 5 dimensions:
 - Users have different curricula (A-Level, IB, SAT, etc.)
 - Different schools use different task categories
 - Flexibility to adapt to student's exact needs
+
+### Feature 9: Integrated Learning System (v2.1.0)
+
+**Philosophy:**
+Combine vocabulary mastery, writing practice, grammar analysis, and personalized weakness remediation into one cohesive learning loop powered by AI.
+
+**Components:**
+
+#### **1. Daily Vocabulary Coach (5 Words/Day)**
+
+Each day, students receive 5 curated vocabulary words from EGP/IELTS/SAT domains:
+
+```
+Today's Words:
+  • Serendipity (EGP) ⭐⭐⭐⭐
+  • Ubiquitous (IELTS) ⭐⭐
+  • Pragmatic (SAT) ⭐
+```
+
+**Per Word Includes:**
+
+- Definition + Academic definition
+- Example sentence in context
+- Synonyms and antonyms
+- Grammar tips for EGP exams
+- Common student mistakes
+- Your progress: (learning | learned | needs_practice) + confidence level
+
+**Daily Rotation Logic:**
+
+- Consistent rotation using date-based hashing (same 5 words every day)
+- Word bank: 10+ pre-curated words per category
+- Resets daily at midnight
+
+#### **2. Writing Practice with AI Assessment**
+
+Students submit writing and receive comprehensive AI-powered feedback:
+
+**Submission Process:**
+
+1. Paste/type writing (essay excerpt, answer, or freeform)
+2. Optionally select: difficulty level, focus area (grammar/vocabulary/structure)
+3. Submit → Instant confirmation + AI begins scoring
+
+**AI Assessment (0-10 Scoring):**
+
+| Dimension        | Measures                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Grammar Score    | Subject-verb agreement, tense consistency, articles, prepositions, sentence fragments, register, pronoun reference |
+| Vocabulary Score | Word choice appropriateness, range, precision, usage of new vocabulary                                             |
+| Structure Score  | Paragraph organization, sentence variety, transitions, coherence                                                   |
+| Overall Score    | Holistic quality across all dimensions                                                                             |
+
+**Feedback Delivered:**
+
+```
+GRAMMAR ISSUES (8 found):
+  ✗ Subject-Verb Agreement (Line 3): "The students has..." → "The students have..."
+  ✗ Tense Consistency (Line 7): Mix of past/present, use past throughout
+  ✗ Article Usage (Line 12): Missing "the" before "university"
+
+VOCABULARY ANALYSIS:
+  ✓ Used 3 words correctly: serendipity, pragmatic, ubiquitous
+  ✗ Misused 1 word: "notorious" (you meant "famous"?)
+
+STRENGTHS:
+  • Clear thesis statement
+  • Good use of examples
+
+NEXT STEPS:
+  • Practice subject-verb agreement
+  • Review present/past tense patterns
+  • See Grammar Coach for targeted exercises
+```
+
+**Automatic Weakness Tracking:**
+
+- Each grammar issue identified → Auto-creates GrammarWeaknessArea
+- Tracks: error frequency, first/last occurrence, improvement rate
+- Triggered automatically → No manual setup needed
+
+#### **3. Learning Journal (Deep Metacognition)**
+
+For each vocabulary word learned, student maintains personal journal:
+
+**Journal Sections:**
+
+1. **Your Meaning** - Student's own explanation (forced to articulate understanding)
+2. **Example Sentences** - 3-5 sentences student writes using the word
+3. **Personal Notes** - Mnemonics, memory tricks, personal associations
+4. **Grammar Rules** - What grammar patterns apply when using this word?
+5. **Areas of Confusion** - What's puzzling about this word?
+6. **Practice Scenarios** - Where have you used this word in actual writing?
+
+**Metacognitive Loop:**
+
+- Writing practice → Identify vocabulary mistakes
+- → Auto-prompt: "Create learning journal entry for this word"
+- → Journal reflection → Deeper understanding
+- → Next writing practice → Better usage
+
+#### **4. Grammar Weakness Tracking**
+
+System auto-identifies grammar areas to focus on:
+
+**Weakness Card Shows:**
+
+- Grammar area (e.g., "Subject-Verb Agreement", "Tense Consistency")
+- How many times found in your writings
+- Last time it occurred
+- Focus urgency level (1-5)
+- Improvement rate (trending up or down?)
+
+**Sorted By Priority:**
+
+- Urgency (focus level 1-5)
+- Frequency (how many instances)
+- Recency (last occurred)
+
+#### **5. Adaptive Exercise Generation**
+
+When student clicks "Practice", AI generates 5 progressive exercises:
+
+**Example Exercise Set for "Subject-Verb Agreement":**
+
+```
+Level 1 - Fill the Blank:
+  The team ___ (play/plays) well together.
+  Answer: plays
+
+Level 2 - Choose Correct:
+  a) Each student have their own textbook
+  b) Each student has their own textbook
+  Answer: b)
+
+Level 3 - Rewrite:
+  "The group of students is studying hard"
+  Rewrite to fix subject-verb agreement issues
+
+Level 4 - Identify & Correct:
+  "The strategies used by successful companies helps them grow"
+  Find and fix all subject-verb agreement errors
+
+Level 5 - Scenario-Based:
+  Write 3 sentences about "Team success" ensuring correct subject-verb agreement
+  Example answer provided after submission
+```
+
+**Exercise Tracking:**
+
+- `practiceAttempts` - How many exercises completed
+- Student answers show expected answer + explanation
+- Improvement rate auto-calculated from writing submissions
+
+#### **Data Flow: Writing → Assessment → Improvement → Mastery**
+
+```
+1. WRITE
+   Student submits writing attempt
+       ↓
+2. ASSESS (Gemini AI)
+   - Grammar analysis (7 error types)
+   - Vocabulary check (new word usage)
+   - Structure evaluation
+   - 4 scores generated (0-10 each)
+       ↓
+3. IDENTIFY WEAKNESSES
+   - Auto-create GrammarWeaknessArea for each error
+   - Map vocabulary mistakes back to words
+   - Increment usage counts
+       ↓
+4. TRACK & COMPARE
+   - Student sees scores + feedback
+   - Grammar Coach updated with new weaknesses
+   - All weaknesses sortable by urgency
+       ↓
+5. PRACTICE (Optional but Recommended)
+   - Student clicks "Practice" on weakness area
+   - System generates 5 targeted exercises
+   - Builds micro-mastery before next writing attempt
+       ↓
+6. WRITE AGAIN (Spaced Repetition)
+   - Student submits new piece of writing
+   - AI detects if weakness improved
+   - Improvement rate tracked
+   - System eventually marks weakness as "mastered"
+       ↓
+7. MASTERY
+   - Weakness area graduates to "monitored" status
+   - Student continues writing, but area no longer in top 3 to focus on
+```
+
+#### **API Endpoints:**
+
+| Route                                | Purpose                                                 |
+| ------------------------------------ | ------------------------------------------------------- |
+| `GET /api/ai/daily-words`            | Get today's 5 vocabulary words + your progress          |
+| `POST /api/writing-practice`         | Submit writing for AI assessment                        |
+| `GET /api/writing-practice`          | View all past writing submissions + feedback            |
+| `POST/PATCH /api/learning-journal`   | Create/edit word reflection journal                     |
+| `GET /api/learning-journal`          | View journals for all learned words                     |
+| `GET/PATCH /api/vocabulary-progress` | Track learning status (learning/learned/needs_practice) |
+| `GET /api/grammar-weakness`          | View all identified weak grammar areas                  |
+| `POST /api/grammar-weakness`         | Generate targeted exercises for selected weakness       |
+
+#### **Data Models:**
+
+```
+DailyWord (pre-curated bank)
+├── word, definition, academicDefinition
+├── exampleSentence, synonyms[], antonyms[]
+├── category (EGP|IELTS|SAT), difficulty (1-5)
+├── grammarPartOfSpeech
+├── gpTip (exam strategy)
+└── commonMistakes (pedagogy)
+
+VocabularyProgress (student tracking per word)
+├── status (learning|learned|needs_practice)
+├── confidenceLevel (1-5)
+├── correctUsageCount, incorrectUsageCount
+└── firstSeenAt, lastPracticedAt, learnedAt
+
+WritingPractice (submissions with AI assessment)
+├── title, prompt, studentWriting
+├── grammarScore, vocabularyScore, sentenceStructureScore, overallScore
+├── aiFeedback (JSON: grammarErrors[], vocabularyAnalysis[], strengths[], improvements[])
+├── wordsUsedCorrectly[], wordsUsedIncorrectly[]
+└── grammarAreasFound[]
+
+LearningJournal (deep reflection per word)
+├── meaningNoted (student's explanation)
+├── exampleSentences[], personalNotes
+├── grammarRulesApplied[], areasOfConfusion
+└── practiceScenarios[], attemptedQuizzes
+
+GrammarWeaknessArea (auto-identified problems)
+├── grammarArea, description
+├── instanceCount, firstOccurrenceAt, lastOccurrenceAt
+├── focusLevel (1-5 urgency)
+├── practiceAttempts, improvementRate
+├── contextExamples[], suggestedResources[]
+```
+
+#### **Student Experience:**
+
+**Monday (Learning Phase):**
+
+```
+✅ See today's 5 words: serendipity, ubiquitous, pragmatic, notorious, erstwhile
+✅ Read definitions and examples
+✅ Create learning journal for each word
+✅ Try to use all 5 in a paragraph
+```
+
+**Tuesday (Practice Phase):**
+
+```
+✅ Submit essay excerpt for AI assessment
+✅ Receive scores: Grammar 7/10, Vocabulary 8/10, Structure 6/10
+✅ See feedback: "You used 'serendipity' correctly but had 2 subject-verb agreement errors"
+✅ System identifies: Subject-Verb Agreement + Tense Consistency as weak areas
+```
+
+**Wednesday (Targeted Practice):**
+
+```
+✅ Open Grammar Coach
+✅ See: "Your top 3 weak areas: Subject-Verb Agreement (8 instances), Tense Consistency (6), Articles (4)"
+✅ Click "Practice" on Subject-Verb Agreement
+✅ Complete 5 progressive exercises (fill-blank → scenario-based)
+```
+
+**Thursday (Reflection):**
+
+```
+✅ Write 3-4 sentences using today's word (newly chosen)
+✅ Add to Learning Journal: "Used it when describing team dynamics - means 'agreement by chance, luck'"
+✅ Complete next Writing Practice submission
+```
+
+**Friday-Sunday (Consolidation):**
+
+```
+✅ Revisit weak areas as they appear in writing
+✅ Watch improvement rate increase
+✅ Vocabulary confidence builds: "learning" → "learned"
+```
 
 ---
 
