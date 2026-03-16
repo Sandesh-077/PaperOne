@@ -292,7 +292,7 @@ export default function EnglishTrainerPage() {
                 {/* Grammar Card */}
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <h2 className="text-2xl font-bold text-gray-900">Today's Grammar Rule</h2>
+                    <h2 className="text-2xl font-bold text-gray-900">Today’s Grammar Rule</h2>
                     <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-medium">
                       {lesson.todayTopic}
                     </span>
@@ -344,7 +344,7 @@ export default function EnglishTrainerPage() {
                       </div>
 
                       <p className="text-gray-600 mb-4">{word.definition}</p>
-                      <p className="text-sm text-gray-700 mb-4 italic">"{word.academicExample}"</p>
+                      <p className="text-sm text-gray-700 mb-4 italic">{`"${word.academicExample}"`}</p>
 
                       <div className="mb-4">
                         <p className="text-xs font-semibold text-gray-600 mb-2">Synonyms:</p>
@@ -410,7 +410,7 @@ export default function EnglishTrainerPage() {
               <div className="space-y-6">
                 {/* Question Card */}
                 <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Today's Practice Question</h2>
+                  <h2 className="text-xl font-bold text-gray-900 mb-4">Today’s Practice Question</h2>
                   <p className="text-lg text-gray-700 mb-4">{lesson.practicePrompt}</p>
                 </div>
 
