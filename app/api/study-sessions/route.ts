@@ -70,7 +70,7 @@ export async function POST(req: Request) {
       data: createData
     })) as any
 
-    // Update or create TopicMastery (optional - table may not exist in DB yet)
+    // THING 1: Auto-update TopicMastery after every session
     let topicMastery: any = null
     try {
       const prismaAny = prisma as any
@@ -79,6 +79,7 @@ export async function POST(req: Request) {
         update: {
           sessionsLogged: { increment: 1 },
           lastRevised: new Date(),
+          needsRevision: false,
           updatedAt: new Date()
         },
         create: {
@@ -87,24 +88,113 @@ export async function POST(req: Request) {
           topicName: data.topic,
           confidenceScore: 3,
           sessionsLogged: 1,
-          lastRevised: new Date()
+          lastRevised: new Date(),
+          needsRevision: false
         }
-      })
-
-      // Recalculate needsRevision
-      const lastRevisedDate = new Date(topicMastery.lastRevised || new Date())
-      const daysSinceRevision = Math.floor((Date.now() - lastRevisedDate.getTime()) / (1000 * 60 * 60 * 24))
-      const needsRevision = topicMastery.confidenceScore <= 3 || daysSinceRevision > 7
-
-      await prismaAny.topicMastery.update({
-        where: { id: topicMastery.id },
-        data: { needsRevision }
       })
     } catch (err) {
       console.log('TopicMastery table not available yet, skipping')
     }
 
-    return NextResponse.json({ success: true, studySession, topicMastery })
+    // THING 2: Auto-recalculate WeeklyPerformance after every session
+    let weeklyPerformance: any = null
+    try {
+      const prismaAny = prisma as any
+      
+      // Calculate week boundaries (Monday to Sunday)
+      const now = new Date()
+      const dayOfWeek = now.getUTCDay() // 0 = Sunday, 1 = Monday
+      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+      const weekStart = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() - daysToMonday,
+        0, 0, 0, 0
+      ))
+      const weekEnd = new Date(Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + (7 - daysToMonday),
+        23, 59, 59, 999
+      ))
+      
+      // Query all StudySessions for this week
+      const weeklySessions = await prismaAny.studySession.findMany({
+        where: {
+          userId: user.id,
+          subject: data.subject,
+          date: {
+            gte: weekStart,
+            lte: weekEnd
+          }
+        }
+      })
+      
+      // Calculate metrics
+      const studyHours = weeklySessions.reduce((sum: number, session: any) => sum + (session.totalHours || 0), 0)
+      const accuracies = weeklySessions.filter((s: any) => s.accuracy !== null).map((s: any) => s.accuracy)
+      const accuracy = accuracies.length > 0 ? accuracies.reduce((a: number, b: number) => a + b, 0) / accuracies.length : 0
+      const avgFocusScore = weeklySessions.length > 0 ? weeklySessions.reduce((sum: number, s: any) => sum + (s.deepFocusScore || 0), 0) / weeklySessions.length : 0
+      const papersCompleted = weeklySessions.filter((s: any) => s.taskType === 'PastPaper').length
+      const totalDistractions = weeklySessions.reduce((sum: number, s: any) => sum + (s.distractionCount || 0), 0)
+      
+      // Calculate scores
+      const studyHoursScore = Math.min((studyHours / 35) * 25, 25)
+      const accuracyScore = Math.min(accuracy * 0.30, 30)
+      const focusScore = Math.min((avgFocusScore / 10) * 20, 20)
+      const papersScore = Math.min((papersCompleted / 5) * 15, 15)
+      const distractionScore = Math.max(10 - (totalDistractions * 0.5), 0)
+      const weeklyRating = studyHoursScore + accuracyScore + focusScore + papersScore + distractionScore
+      
+      // Determine grade label
+      let gradeLabel = 'Lock In'
+      if (weeklyRating >= 90) gradeLabel = 'Elite'
+      else if (weeklyRating >= 75) gradeLabel = 'Strong'
+      else if (weeklyRating >= 60) gradeLabel = 'Building'
+      else if (weeklyRating >= 45) gradeLabel = 'Weak'
+      
+      // Upsert WeeklyPerformance
+      weeklyPerformance = await prismaAny.weeklyPerformance.upsert({
+        where: { userId_subject_weekStartDate: { userId: user.id, subject: data.subject, weekStartDate: weekStart } },
+        update: {
+          weekEndDate: weekEnd,
+          studyHours,
+          studyHoursScore,
+          accuracy,
+          accuracyScore,
+          avgFocusScore,
+          focusScore,
+          papersCompleted,
+          papersScore,
+          totalDistractions,
+          distractionScore,
+          weeklyRating,
+          gradeLabel
+        },
+        create: {
+          userId: user.id,
+          subject: data.subject,
+          weekStartDate: weekStart,
+          weekEndDate: weekEnd,
+          studyHours,
+          studyHoursScore,
+          accuracy,
+          accuracyScore,
+          avgFocusScore,
+          focusScore,
+          papersCompleted,
+          papersScore,
+          totalDistractions,
+          distractionScore,
+          weeklyRating,
+          gradeLabel
+        }
+      })
+    } catch (err) {
+      console.log('WeeklyPerformance table not available yet, skipping')
+    }
+
+    return NextResponse.json({ success: true, studySession, topicMastery, weeklyPerformance })
   } catch (error) {
     console.error('Error creating study session:', error)
     const errorMsg = error instanceof Error ? error.message : 'Failed to create session'

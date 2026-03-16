@@ -32,6 +32,19 @@ export default function SessionLogPage() {
   const [paperFile, setPaperFile] = useState<File | null>(null)
   const [notesFile, setNotesFile] = useState<File | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState<{paperUrl?: string, notesUrl?: string}>({})
+  const [showMistakeModal, setShowMistakeModal] = useState(false)
+  const [sessionSaved, setSessionSaved] = useState(false)
+  const [savedSessionData, setSavedSessionData] = useState<{subject: string, topic: string} | null>(null)
+  const [mistakeBannerDismissed, setMistakeBannerDismissed] = useState(false)
+  const [mistakeLoading, setMistakeLoading] = useState(false)
+  const [mistakeSaved, setMistakeSaved] = useState(false)
+
+  const [mistakeFormData, setMistakeFormData] = useState({
+    whatWentWrong: '',
+    mistakeType: 'Concept',
+    correctMethod: '',
+    formulaOrConcept: ''
+  })
 
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -257,7 +270,13 @@ export default function SessionLogPage() {
       })
 
       if (response.ok) {
-        alert('Session logged successfully!')
+        // Store session data for mistake logging
+        setSavedSessionData({
+          subject: formData.subject,
+          topic: formData.topic || formData.paperCode || ''
+        })
+        setSessionSaved(true)
+        setMistakeBannerDismissed(false)
         setFormData({
           date: new Date().toISOString().split('T')[0],
           startTime: '09:00',
@@ -290,6 +309,71 @@ export default function SessionLogPage() {
       alert('Error: ' + error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAISuggestion = async () => {
+    if (!mistakeFormData.whatWentWrong || !savedSessionData) return
+    
+    setMistakeLoading(true)
+    try {
+      const res = await fetch('/api/ai/mistake-help', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: savedSessionData.subject,
+          topic: savedSessionData.topic,
+          whatWentWrong: mistakeFormData.whatWentWrong
+        })
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setMistakeFormData(prev => ({
+          ...prev,
+          correctMethod: data.suggestion
+        }))
+      }
+    } catch (error) {
+      console.error('Error getting AI suggestion:', error)
+    } finally {
+      setMistakeLoading(false)
+    }
+  }
+
+  const handleSaveMistake = async () => {
+    if (!mistakeFormData.whatWentWrong || !savedSessionData) return
+    
+    try {
+      const res = await fetch('/api/mistake-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: new Date().toISOString().split('T')[0],
+          subject: savedSessionData.subject,
+          topic: savedSessionData.topic,
+          whatWentWrong: mistakeFormData.whatWentWrong,
+          correctMethod: mistakeFormData.correctMethod,
+          formulaOrConcept: mistakeFormData.formulaOrConcept,
+          mistakeType: mistakeFormData.mistakeType
+        })
+      })
+      
+      if (res.ok) {
+        setMistakeSaved(true)
+        // Reset after 2 seconds
+        setTimeout(() => {
+          setMistakeFormData({
+            whatWentWrong: '',
+            mistakeType: 'Concept',
+            correctMethod: '',
+            formulaOrConcept: ''
+          })
+          setMistakeSaved(false)
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Error saving mistake:', error)
     }
   }
 
@@ -673,8 +757,169 @@ export default function SessionLogPage() {
               {loading ? 'Logging...' : '✓ Log Session'}
             </button>
           </form>
+
+          {/* Session Saved - Quick Mistake Banner */}
+          {sessionSaved && !mistakeBannerDismissed && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-green-900">✓ Session logged!</h3>
+                  <p className="text-sm text-green-700">Made any mistakes? Log them quickly.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowMistakeModal(true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+                  >
+                    Log a mistake
+                  </button>
+                  <button
+                    onClick={() => setMistakeBannerDismissed(true)}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
+                  >
+                    No mistakes
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
-    </div>
-  )
-}
+
+      {/* Mistake Modal - Slide Over */}
+      {showMistakeModal && savedSessionData && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
+          <div className="w-full max-w-md bg-white rounded-t-lg shadow-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            {mistakeSaved ? (
+              <div className="text-center py-8">
+                <p className="text-green-600 font-semibold text-lg">✓ Mistake saved!</p>
+                <button
+                  onClick={() => {
+                    setMistakeFormData({
+                      whatWentWrong: '',
+                      mistakeType: 'Concept',
+                      correctMethod: '',
+                      formulaOrConcept: ''
+                    })
+                    setMistakeSaved(false)
+                  }}
+                  className="mt-4 text-blue-600 font-semibold hover:underline"
+                >
+                  Log another
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMistakeModal(false)
+                    setMistakeSaved(false)
+                  }}
+                  className="block mt-2 text-gray-600 font-semibold hover:underline"
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold">Log Mistake</h2>
+                  <button
+                    onClick={() => setShowMistakeModal(false)}
+                    className="text-gray-500 hover:text-gray-700 text-2xl"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Pre-filled read-only fields */}
+                <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">Subject</label>
+                    <p className="text-sm font-medium">{savedSessionData.subject}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600">Topic</label>
+                    <p className="text-sm font-medium">{savedSessionData.topic}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs font-semibold text-gray-600">Date</label>
+                    <p className="text-sm font-medium">{new Date().toISOString().split('T')[0]}</p>
+                  </div>
+                </div>
+
+                {/* What Went Wrong */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1">What went wrong? *</label>
+                  <textarea
+                    value={mistakeFormData.whatWentWrong}
+                    onChange={(e) => setMistakeFormData(prev => ({...prev, whatWentWrong: e.target.value}))}
+                    placeholder="Describe the mistake..."
+                    className="w-full border rounded px-3 py-2 text-sm resize-none h-20"
+                    required
+                  />
+                </div>
+
+                {/* Mistake Type Toggle */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Mistake Type</label>
+                  <div className="flex gap-2">
+                    {['Concept', 'Formula', 'Careless'].map(type => (
+                      <button
+                        key={type}
+                        onClick={() => setMistakeFormData(prev => ({...prev, mistakeType: type}))}
+                        className={`flex-1 px-3 py-2 rounded text-sm font-semibold transition ${
+                          mistakeFormData.mistakeType === type
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Correct Method */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-sm font-semibold">Correct Method</label>
+                    <button
+                      type="button"
+                      onClick={handleAISuggestion}
+                      disabled={mistakeLoading || !mistakeFormData.whatWentWrong}
+                      className="text-xs text-blue-600 font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {mistakeLoading ? '⏳ AI thinking...' : '✨ AI: suggest'}
+                    </button>
+                  </div>
+                  <textarea
+                    value={mistakeFormData.correctMethod}
+                    onChange={(e) => setMistakeFormData(prev => ({...prev, correctMethod: e.target.value}))}
+                    placeholder="How should it be done?"
+                    className="w-full border rounded px-3 py-2 text-sm resize-none h-20"
+                  />
+                </div>
+
+                {/* Formula or Concept */}
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Formula / Concept Involved</label>
+                  <input
+                    type="text"
+                    value={mistakeFormData.formulaOrConcept}
+                    onChange={(e) => setMistakeFormData(prev => ({...prev, formulaOrConcept: e.target.value}))}
+                    placeholder="e.g., e = mc²"
+                    className="w-full border rounded px-3 py-2 text-sm"
+                  />
+                </div>
+
+                {/* Save Button */}
+                <button
+                  onClick={handleSaveMistake}
+                  disabled={!mistakeFormData.whatWentWrong}
+                  className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save Mistake
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
