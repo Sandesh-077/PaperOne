@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,7 +103,7 @@ Return ONLY valid JSON - no markdown:
 }`
 
   try {
-    const exerciseText = await callGemini(prompt, 1500)
+    const exerciseText = await callGroq(prompt, 1500)
     const exerciseData = parseJsonResponse(exerciseText)
     return exerciseData.exercises || []
   } catch (error) {

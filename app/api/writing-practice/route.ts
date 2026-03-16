@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -167,7 +167,7 @@ Return ONLY valid JSON - no markdown, no explanation:
   ]
 }`;
 
-    const feedbackText = await callGemini(assessmentPrompt, 2000)
+    const feedbackText = await callGroq(assessmentPrompt, 2000)
     const feedback = parseJsonResponse(feedbackText)
 
     // Extract word usage information

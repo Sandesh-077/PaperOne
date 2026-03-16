@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +56,7 @@ Return ONLY valid JSON — no markdown, no explanation:
 }`
 
     // Call Gemini API
-    const responseText = await callGemini(prompt, 2000)
+    const responseText = await callGroq(prompt, 2000)
     
     // Parse the response
     const feedback = parseJsonResponse(responseText)

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,9 +22,9 @@ export async function POST(req: Request) {
     console.log('daily-lesson called for user:', user.id)
     console.log('session.user.id:', session.user.id)
     
-    // Check GEMINI_API_KEY before proceeding
-    if (!process.env.GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not set in environment variables')
+    // Check GROQ_API_KEY before proceeding
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('GROQ_API_KEY not set in environment variables')
     }
 
     // Fetch or create EnglishProfile
@@ -93,15 +93,15 @@ Generate today's lesson. Return ONLY valid JSON:
 }
 Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
 
-    // Call Gemini
-    console.log('Calling Gemini API...')
-    const response = await callGemini(prompt, 1500)
-    console.log('Gemini response received, length:', response.length)
+    // Call Groq
+    console.log('Calling Groq API...')
+    const response = await callGroq(prompt, 1500)
+    console.log('Groq response received, length:', response.length)
 
     // Parse JSON response with dedicated error handling
     let lesson
     try {
-      console.log('Parsing JSON response from Gemini...')
+      console.log('Parsing JSON response from Groq...')
       lesson = parseJsonResponse(response)
       console.log('JSON parsed successfully')
     } catch (parseError: any) {

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 import type { SubjectContext, RevisionPlanData } from '@/types/planner'
 
 export const dynamic = 'force-dynamic'
@@ -132,7 +132,7 @@ RETURN ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:
 }`
 
     // STEP 6: Call Gemini API
-    const responseText = await callGemini(prompt, 8000)
+    const responseText = await callGroq(prompt, 8000)
 
     // STEP 7: Parse JSON response
     let planData: RevisionPlanData

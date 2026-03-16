@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +37,7 @@ Return ONLY valid JSON - no markdown, no explanation:
   "gpTip": "...how this word impresses GP examiners..."
 }`
 
-      const responseText = await callGemini(prompt, 1000)
+      const responseText = await callGroq(prompt, 1000)
       const result = parseJsonResponse(responseText)
       return NextResponse.json(result)
     } else {
@@ -60,7 +60,7 @@ Return ONLY valid JSON - no markdown, no explanation:
   ]
 }`
 
-      const responseText = await callGemini(prompt, 1000)
+      const responseText = await callGroq(prompt, 1000)
       const result = parseJsonResponse(responseText)
       return NextResponse.json(result)
     }

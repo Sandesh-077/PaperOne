@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,7 +98,7 @@ Provide a detailed evaluation. Return ONLY valid JSON:
 }`
 
     // Call Gemini with extended token limit
-    const aiResponse = await callGemini(prompt, 2500)
+    const aiResponse = await callGroq(prompt, 2500)
     const feedback = parseJsonResponse(aiResponse)
 
     // Update EnglishProfile: writingLevel, recalculate overallScore and readiness estimates

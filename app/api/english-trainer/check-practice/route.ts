@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { callGemini, parseJsonResponse } from '@/lib/ai-providers'
+import { callGroq, parseJsonResponse } from '@/lib/ai-providers'
 
 export const dynamic = 'force-dynamic'
 
@@ -80,7 +80,7 @@ Evaluate and return ONLY valid JSON:
 }`
 
     // Call Gemini
-    const aiResponse = await callGemini(prompt, 1500)
+    const aiResponse = await callGroq(prompt, 1500)
     const feedback = parseJsonResponse(aiResponse)
 
     // Update EnglishProfile with level changes (clamped 1-10)
