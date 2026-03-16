@@ -9,6 +9,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard' },
   { name: 'Planner', href: '/planner' },
   { name: 'Session Log', href: '/session-log' },
+  { name: 'Sessions', href: '/sessions' },
   { name: 'Essays', href: '/essays' },
   { name: 'Grammar', href: '/grammar' },
   { name: 'Vocabulary', href: '/vocabulary' },

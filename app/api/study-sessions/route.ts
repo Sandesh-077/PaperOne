@@ -153,3 +153,105 @@ export async function GET(req: Request) {
     return NextResponse.json({error: 'Failed to fetch sessions'}, {status: 500})
   }
 }
+
+export async function PATCH(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return NextResponse.json({error: 'Unauthorized'}, {status: 401})
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
+
+  const { searchParams } = new URL(req.url)
+  const sessionId = searchParams.get('id')
+  if (!sessionId) return NextResponse.json({error: 'Session ID required'}, {status: 400})
+
+  const data = await req.json()
+
+  try {
+    // Verify user owns this session
+    const existingSession = await prisma.studySession.findFirst({
+      where: { id: sessionId, userId: user.id }
+    })
+    if (!existingSession) return NextResponse.json({error: 'Session not found'}, {status: 404})
+
+    // Helper function to convert time string (HH:MM) + date to valid DateTime
+    const combineDateTime = (dateStr: string, timeStr: string) => {
+      if (!dateStr || !timeStr) return null
+      try {
+        const combined = `${dateStr}T${timeStr}:00`
+        const date = new Date(combined)
+        if (isNaN(date.getTime())) return null
+        return date
+      } catch {
+        return null
+      }
+    }
+
+    const updateData: any = {}
+
+    if (data.date !== undefined) updateData.date = new Date(data.date)
+    if (data.subject !== undefined) updateData.subject = data.subject
+    if (data.topic !== undefined) updateData.topic = data.topic
+    if (data.taskType !== undefined) updateData.taskType = data.taskType
+    if (data.deepFocusScore !== undefined) updateData.deepFocusScore = data.deepFocusScore
+    if (data.distractionCount !== undefined) updateData.distractionCount = data.distractionCount
+    if (data.notes !== undefined) updateData.notes = data.notes
+    if (data.totalMarks !== undefined) updateData.totalMarks = data.totalMarks
+    if (data.obtainedMarks !== undefined) updateData.obtainedMarks = data.obtainedMarks
+    if (data.accuracy !== undefined) updateData.accuracy = data.accuracy
+    if (data.questionsAttempted !== undefined) updateData.questionsAttempted = data.questionsAttempted
+    if (data.questionsCorrect !== undefined) updateData.questionsCorrect = data.questionsCorrect
+    if (data.chapter !== undefined) updateData.chapter = data.chapter
+    if (data.totalHours !== undefined) updateData.totalHours = data.totalHours
+    if (data.paperCode !== undefined) updateData.paperCode = data.paperCode
+    if (data.paperYear !== undefined) updateData.paperYear = data.paperYear
+
+    if (data.startTime && data.date) {
+      const startDateTime = combineDateTime(data.date, data.startTime)
+      if (startDateTime) updateData.startTime = startDateTime
+    }
+    if (data.endTime && data.date) {
+      const endDateTime = combineDateTime(data.date, data.endTime)
+      if (endDateTime) updateData.endTime = endDateTime
+    }
+
+    const updatedSession = await prisma.studySession.update({
+      where: { id: sessionId },
+      data: updateData
+    })
+
+    return NextResponse.json(updatedSession)
+  } catch (error) {
+    console.error('Error updating session:', error)
+    return NextResponse.json({error: 'Failed to update session'}, {status: 500})
+  }
+}
+
+export async function DELETE(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return NextResponse.json({error: 'Unauthorized'}, {status: 401})
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user) return NextResponse.json({error: 'User not found'}, {status: 404})
+
+  const { searchParams } = new URL(req.url)
+  const sessionId = searchParams.get('id')
+  if (!sessionId) return NextResponse.json({error: 'Session ID required'}, {status: 400})
+
+  try {
+    // Verify user owns this session
+    const existingSession = await prisma.studySession.findFirst({
+      where: { id: sessionId, userId: user.id }
+    })
+    if (!existingSession) return NextResponse.json({error: 'Session not found'}, {status: 404})
+
+    await prisma.studySession.delete({
+      where: { id: sessionId }
+    })
+
+    return NextResponse.json({success: true})
+  } catch (error) {
+    console.error('Error deleting session:', error)
+    return NextResponse.json({error: 'Failed to delete session'}, {status: 500})
+  }
+}
