@@ -425,6 +425,9 @@ model DailyTask {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([userId, date])
+  @@index([planId])
+}
 
 // Essay tracking with AI feedback
 model Essay {
@@ -444,7 +447,4 @@ model Essay {
   updatedAt    DateTime @updatedAt
 
   @@index([userId])
-}
-  @@index([userId, date])
-  @@index([planId])
 }
