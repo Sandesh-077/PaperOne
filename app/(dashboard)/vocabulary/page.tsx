@@ -36,6 +36,7 @@ export default function VocabularyPage() {
   const router = useRouter()
   const { status } = useSession()
   const [vocabulary, setVocabulary] = useState<Vocabulary[]>([])
+  const [dailyWords, setDailyWords] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [activeTab, setActiveTab] = useState<'learn' | 'improve'>('learn')
@@ -58,8 +59,21 @@ export default function VocabularyPage() {
       router.push('/login')
     } else if (status === 'authenticated') {
       fetchVocabulary()
+      fetchDailyWords()
     }
   }, [status, router])
+
+  const fetchDailyWords = async () => {
+    try {
+      const response = await fetch('/api/ai/daily-words')
+      if (response.ok) {
+        const data = await response.json()
+        setDailyWords(data.words || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch daily words:', error)
+    }
+  }
 
   const fetchVocabulary = async () => {
     try {
@@ -72,6 +86,24 @@ export default function VocabularyPage() {
       console.error('Failed to fetch vocabulary:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleMarkLearned = async (wordId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'learned' ? 'learning' : 'learned'
+      await fetch('/api/vocabulary-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wordId,
+          status: newStatus,
+          confidenceLevel: newStatus === 'learned' ? 5 : 3
+        })
+      })
+      fetchDailyWords()
+    } catch (error) {
+      console.error('Failed to update word status:', error)
     }
   }
 
@@ -188,6 +220,8 @@ export default function VocabularyPage() {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
 
+  const learnedCount = dailyWords.filter((w: any) => w.userProgress?.status === 'learned').length
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -201,6 +235,84 @@ export default function VocabularyPage() {
         >
           {showForm ? 'Cancel' : '+ Add Word'}
         </button>
+      </div>
+
+      {/* Today's 5 Words Section */}
+      {dailyWords.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              📚 Today&apos;s Vocabulary Focus
+              <span className="text-sm font-normal text-gray-600 ml-2">({learnedCount}/5 mastered)</span>
+            </h2>
+            <a href="/dashboard/learning-journal" className="text-sm text-purple-600 hover:text-purple-700 font-semibold">
+              Go to Journal →
+            </a>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+            {dailyWords.map((word: any) => {
+              const status = word.userProgress?.status || 'learning'
+              const statusColorMap: Record<string, string> = {
+                'learned': 'bg-green-100 border-green-300 text-green-900',
+                'learning': 'bg-blue-100 border-blue-300 text-blue-900',
+                'needs_practice': 'bg-orange-100 border-orange-300 text-orange-900'
+              }
+              const statusColor = statusColorMap[status] || 'bg-gray-100 border-gray-300 text-gray-900'
+
+              return (
+                <div key={word.id} className={`p-4 rounded-lg border-2 ${statusColor}`}>
+                  <h3 className="font-bold text-lg mb-1">{word.word}</h3>
+                  <p className="text-xs opacity-75 mb-2 line-clamp-2">{word.definition}</p>
+                  <div className="flex items-center gap-1 mb-2 text-xs">
+                    <span className="font-semibold">{word.category}</span>
+                    <span>•</span>
+                    <span>Level {word.difficulty}</span>
+                  </div>
+                  <div className="flex gap-1 text-lg mb-2">
+                    {Array.from({ length: word.userProgress?.confidenceLevel || 0 }).map((_, i) => (
+                      <span key={i}>⭐</span>
+                    ))}
+                    {Array.from({ length: Math.max(0, 5 - (word.userProgress?.confidenceLevel || 0)) }).map((_, i) => (
+                      <span key={i} className="opacity-25">☆</span>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => handleMarkLearned(word.id, word.userProgress?.status)}
+                    className="w-full text-xs bg-white bg-opacity-50 hover:bg-opacity-75 py-1 px-2 rounded transition font-semibold"
+                  >
+                    {word.userProgress?.status === 'learned' ? '✓ Mastered' : 'Mark Learned'}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="mt-4 flex gap-4">
+            <a href="/dashboard/writing-practice" className="flex-1 text-center bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition font-semibold text-sm">
+              Practice Writing
+            </a>
+            <a href="/dashboard/grammar-coach" className="flex-1 text-center bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-semibold text-sm">
+              Grammar Coach
+            </a>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
+          <p className="text-2xl font-bold text-green-600">{learnedCount}</p>
+          <p className="text-xs text-gray-600 mt-1">Words Mastered Today</p>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
+          <p className="text-2xl font-bold text-blue-600">{vocabulary.length}</p>
+          <p className="text-xs text-gray-600 mt-1">Total Vocabulary</p>
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-gray-200 text-center hidden md:block">
+          <p className="text-2xl font-bold text-purple-600">{Math.round((learnedCount / 5) * 100)}</p>
+          <p className="text-xs text-gray-600 mt-1">% Daily Target</p>
+        </div>
       </div>
 
       {/* Learning Tabs */}

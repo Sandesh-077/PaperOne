@@ -117,21 +117,22 @@ export async function PATCH(req: Request) {
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
-  const weaknessId = url.searchParams.get('id')
+  const id = url.searchParams.get('id')
 
-  if (!weaknessId) {
+  if (!id) {
     return NextResponse.json({ error: 'Weakness ID is required' }, { status: 400 })
   }
 
   const { focusLevel, practiceAttempts } = await req.json()
 
   try {
+    const updates: any = {}
+    if (focusLevel !== undefined) updates.focusLevel = focusLevel
+    if (practiceAttempts !== undefined) updates.practiceAttempts = practiceAttempts
+
     const weakness = await prisma.grammarWeaknessArea.update({
-      where: { id: weaknessId },
-      data: {
-        focusLevel: focusLevel !== undefined ? focusLevel : undefined,
-        practiceAttempts: practiceAttempts !== undefined ? practiceAttempts : undefined,
-      }
+      where: { id },
+      data: updates
     })
 
     return NextResponse.json({ weakness })

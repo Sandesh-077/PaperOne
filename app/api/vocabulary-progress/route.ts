@@ -29,7 +29,7 @@ export async function GET(req: Request) {
 
     const total = await prisma.vocabularyProgress.count({ where: query })
 
-    return NextResponse.json({ progress, total })
+    return NextResponse.json({ progress, total, limit, offset })
   } catch (error) {
     console.error('Error fetching vocabulary progress:', error)
     return NextResponse.json({ error: 'Failed to fetch progress' }, { status: 500 })

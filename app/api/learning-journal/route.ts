@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     let query: any = { userId }
     if (wordId) query.wordId = wordId
 
-    const journals = await prisma.learningJournal.findMany({
+    const entries = await prisma.learningJournal.findMany({
       where: query,
       include: {
         word: true,
@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       orderBy: { updatedAt: 'desc' }
     })
 
-    return NextResponse.json({ journals })
+    return NextResponse.json({ entries })
   } catch (error) {
     console.error('Error fetching learning journals:', error)
     return NextResponse.json({ error: 'Failed to fetch journals' }, { status: 500 })
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
       })
     }
 
-    return NextResponse.json({ journal }, { status: 201 })
+    return NextResponse.json({ entry: journal }, { status: 201 })
   } catch (error) {
     console.error('Error creating/updating learning journal:', error)
     return NextResponse.json({ error: 'Failed to save journal entry' }, { status: 500 })

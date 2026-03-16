@@ -13,10 +13,30 @@ export async function GET(req: Request) {
   try {
     const userId = (session.user as any).id
     const url = new URL(req.url)
+    const id = url.searchParams.get('id')
     const limit = parseInt(url.searchParams.get('limit') || '20')
     const offset = parseInt(url.searchParams.get('offset') || '0')
 
-    const practices = await prisma.writingPractice.findMany({
+    // If specific ID requested, fetch that submission
+    if (id) {
+      const submission = await prisma.writingPractice.findUnique({
+        where: { id }
+      })
+
+      if (!submission || submission.userId !== userId) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        submission: {
+          ...submission,
+          aiFeedback: submission.aiFeedback ? JSON.parse(submission.aiFeedback as any) : null,
+        }
+      })
+    }
+
+    // Otherwise, fetch all submissions
+    const submissions = await prisma.writingPractice.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -24,7 +44,7 @@ export async function GET(req: Request) {
     })
 
     return NextResponse.json({
-      practices: practices.map(p => ({
+      submissions: submissions.map(p => ({
         ...p,
         aiFeedback: p.aiFeedback ? JSON.parse(p.aiFeedback as any) : null,
       }))
@@ -46,7 +66,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Writing and prompt are required' }, { status: 400 })
   }
 
-  const wordCount = studentWriting.trim().split(/\s+/).filter(w => w.length > 0).length
+  const wordCount = studentWriting.trim().split(/\s+/).filter((w: string) => w.length > 0).length
 
   try {
     // Create initial record

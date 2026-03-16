@@ -153,16 +153,41 @@ export async function GET(req: Request) {
     
     // Select 5 random words from the bank based on day hash for consistency
     const shuffled = [...WORD_BANK].sort(() => Math.sin(dayHash) - 0.5)
-    const dailyWords = shuffled.slice(0, 5)
+    const selectedWords = shuffled.slice(0, 5)
+    
+    // Get or create DailyWord records
+    const dailyWords = await Promise.all(
+      selectedWords.map(async (wordData) => {
+        const existing = await prisma.dailyWord.findUnique({
+          where: { word: wordData.word }
+        })
+        
+        if (existing) return existing
+        
+        return prisma.dailyWord.create({
+          data: {
+            word: wordData.word,
+            definition: wordData.definition,
+            academicDefinition: wordData.academicDefinition,
+            exampleSentence: wordData.exampleSentence,
+            synonyms: wordData.synonyms,
+            antonyms: wordData.antonyms,
+            category: wordData.category,
+            difficulty: wordData.difficulty,
+            grammarPartOfSpeech: wordData.partOfSpeech,
+            gpTip: wordData.gpTip,
+            commonMistakes: wordData.commonMistakes,
+          }
+        })
+      })
+    )
     
     // Get user's progress on these words
     const userProgress = await prisma.vocabularyProgress.findMany({
       where: {
         userId: userId,
-        word: {
-          word: {
-            in: dailyWords.map(w => w.word)
-          }
+        wordId: {
+          in: dailyWords.map(w => w.id)
         }
       }
     })
@@ -173,12 +198,27 @@ export async function GET(req: Request) {
     const response = {
       date: today,
       words: dailyWords.map(word => ({
-        ...word,
-        userProgress: {
-          status: progressMap.get(word.word)?.status || 'not_started',
-          confidenceLevel: progressMap.get(word.word)?.confidenceLevel || 0,
-          correctUsageCount: progressMap.get(word.word)?.correctUsageCount || 0,
-          incorrectUsageCount: progressMap.get(word.word)?.incorrectUsageCount || 0,
+        id: word.id,
+        word: word.word,
+        definition: word.definition,
+        academicDefinition: word.academicDefinition,
+        exampleSentence: word.exampleSentence,
+        synonyms: word.synonyms,
+        antonyms: word.antonyms,
+        category: word.category,
+        difficulty: word.difficulty,
+        gpTip: word.gpTip,
+        commonMistakes: word.commonMistakes,
+        userProgress: progressMap.has(word.id) ? {
+          status: progressMap.get(word.id)!.status,
+          confidenceLevel: progressMap.get(word.id)!.confidenceLevel,
+          correctUsageCount: progressMap.get(word.id)!.correctUsageCount,
+          incorrectUsageCount: progressMap.get(word.id)!.incorrectUsageCount,
+        } : {
+          status: 'learning',
+          confidenceLevel: 0,
+          correctUsageCount: 0,
+          incorrectUsageCount: 0,
         }
       }))
     }
