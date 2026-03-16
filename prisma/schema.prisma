@@ -34,6 +34,9 @@ model User {
   writingPractices   WritingPractice[]
   learningJournals   LearningJournal[]
   grammarWeaknesses  GrammarWeaknessArea[]
+  englishProfile     EnglishProfile?
+  trainerSessions    TrainerSession[]
+  learnedItems       LearnedItem[]
 }
 
 model Error {
@@ -450,6 +453,11 @@ model Essay {
   aiFeedback   Json?
   aiFeedbackAt DateTime?
 
+  cambridgeLevel      Int?    // 1-5 level from Cambridge mark scheme
+  marksEstimate       Int?    // estimated marks out of 30
+  writingFeedback     Json?   // full structured Cambridge-style feedback
+  creativeSuggestions String? @db.Text
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -623,4 +631,77 @@ model GrammarWeaknessArea {
   @@unique([userId, grammarArea])
   @@index([userId])
   @@index([focusLevel])
+}
+
+// English Profile - tracks user's English level and trainer progress
+model EnglishProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  grammarLevel    Int      @default(1)   // 1-10, starts beginner
+  vocabLevel      Int      @default(1)   // 1-10, starts beginner
+  writingLevel    Int      @default(1)   // 1-5, Cambridge Level scale
+  overallScore    Float    @default(0)   // 0-100 composite score
+
+  // Goal readiness estimates (auto-calculated, 0-100)
+  gpReadiness     Float    @default(0)   // Cambridge GP 8021 readiness
+  satReadiness    Float    @default(0)   // SAT Writing readiness
+  ieltsEstimate   Float    @default(0)   // IELTS band estimate * 10
+  uniReadiness    Float    @default(0)   // University essay readiness
+
+  totalSessions   Int      @default(0)   // how many trainer sessions done
+  streak          Int      @default(0)   // daily streak
+  lastActiveDate  DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// Trainer Session - each practice session in the English trainer
+model TrainerSession {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  sessionType     String   // "learn" | "practice" | "writing"
+  topic           String   // GP topic this session covered
+  grammarRule     String?  // The grammar rule taught/tested
+  vocabWords      Json?    // Array of words taught this session
+
+  // For practice sessions
+  questionAsked   String?  @db.Text
+  userResponse    String?  @db.Text
+  aiFeedback      Json?    // Full structured feedback from AI
+
+  // Score changes this session
+  grammarScoreDelta Float  @default(0)
+  vocabScoreDelta   Float  @default(0)
+  writingScoreDelta Float  @default(0)
+
+  // For writing sessions
+  essayContent    String?  @db.Text
+  cambridgeLevel  Int?     // 1-5 level assigned
+  marksEstimate   Int?     // out of 30
+
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Learned Item - tracks grammar rules and vocab words the user has learned
+model LearnedItem {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  itemType    String   // "grammar" | "vocab"
+  content     String   // The rule name or word
+  learnedAt   DateTime @default(now())
+  reviewCount Int      @default(1)
+  lastReviewedAt DateTime @default(now())
+
+  @@unique([userId, itemType, content])
+  @@index([userId])
 }
