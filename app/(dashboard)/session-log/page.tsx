@@ -923,3 +923,6 @@ export default function SessionLogPage() {
           </div>
         </div>
       )}
+    </div>
+  )
+}

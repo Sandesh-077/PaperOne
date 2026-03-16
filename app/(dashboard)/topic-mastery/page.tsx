@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface TopicMasteryData {
@@ -21,20 +21,16 @@ export default function TopicMasteryPage() {
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchTopics()
-  }, [])
-
-  const fetchTopics = async () => {
+  const fetchTopics = useCallback(async () => {
     try {
       const res = await fetch('/api/topic-mastery')
       if (res.ok) {
         const data = await res.json()
         setTopics(data)
-        // Set first subject as default if available
-        const uniqueSubjects = [...new Set(data.map((t: TopicMasteryData) => t.subject))]
-        if (uniqueSubjects.length > 0 && !selectedSubject) {
-          setSelectedSubject(uniqueSubjects[0])
+        // Set first subject as default if available (only on initial load)
+        const uniqueSubjects: string[] = Array.from(new Set(data.map((t: TopicMasteryData) => t.subject)))
+        if (uniqueSubjects.length > 0) {
+          setSelectedSubject(prev => prev || uniqueSubjects[0])
         }
       }
     } catch (error) {
@@ -42,7 +38,11 @@ export default function TopicMasteryPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    fetchTopics()
+  }, [fetchTopics])
 
   const handleConfidenceChange = async (topicId: string, newScore: number) => {
     try {
