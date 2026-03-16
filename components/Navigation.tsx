@@ -26,6 +26,7 @@ const navigationGroups = [
   {
     label: 'Progress',
     items: [
+      { name: 'English Progress', href: '/english-progress' },
       { name: 'Topic Mastery', href: '/topic-mastery' },
       { name: 'Weekly Tracker', href: '/weekly-tracker' },
     ]
