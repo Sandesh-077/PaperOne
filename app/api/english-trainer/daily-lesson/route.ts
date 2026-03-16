@@ -18,7 +18,17 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Test log: confirm route is reached
+    console.log('daily-lesson called for user:', user.id)
+    console.log('session.user.id:', session.user.id)
+    
+    // Check GEMINI_API_KEY before proceeding
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY not set in environment variables')
+    }
+
     // Fetch or create EnglishProfile
+    console.log('Attempting to upsert EnglishProfile for userId:', user.id)
     const profile = await (prisma as any).englishProfile.upsert({
       where: { userId: user.id },
       update: {},
@@ -36,14 +46,17 @@ export async function POST(req: Request) {
         streak: 0
       }
     })
+    console.log('EnglishProfile upserted successfully:', profile.id)
 
     // Fetch last 10 LearnedItems to avoid repetition
+    console.log('Fetching recently learned items...')
     const recentlyLearned = await (prisma as any).learnedItem.findMany({
       where: { userId: user.id },
       orderBy: { learnedAt: 'desc' },
       take: 10,
       select: { content: true, itemType: true }
     })
+    console.log('Found', recentlyLearned.length, 'recently learned items')
 
     const recentContent = recentlyLearned
       .map((item: any) => `${item.itemType}: ${item.content}`)
@@ -81,35 +94,67 @@ Generate today's lesson. Return ONLY valid JSON:
 Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
 
     // Call Gemini
+    console.log('Calling Gemini API...')
     const response = await callGemini(prompt, 1500)
-    const lesson = parseJsonResponse(response)
+    console.log('Gemini response received, length:', response.length)
+
+    // Parse JSON response with dedicated error handling
+    let lesson
+    try {
+      console.log('Parsing JSON response from Gemini...')
+      lesson = parseJsonResponse(response)
+      console.log('JSON parsed successfully')
+    } catch (parseError: any) {
+      console.error('JSON parse error:', parseError.message)
+      console.error('Raw response:', response.substring(0, 500))
+      throw new Error(`Failed to parse Gemini response as JSON: ${parseError.message}`)
+    }
+
+    // Validate lesson structure
+    if (!lesson.grammarRule || !lesson.vocabWords || !lesson.todayTopic) {
+      throw new Error('Invalid lesson structure from Gemini - missing required fields')
+    }
 
     // Save the grammar rule as a LearnedItem
-    await (prisma as any).learnedItem.upsert({
-      where: { userId_itemType_content: { userId: user.id, itemType: 'grammar', content: lesson.grammarRule.name } },
-      update: { reviewCount: { increment: 1 }, lastReviewedAt: new Date() },
-      create: {
-        userId: user.id,
-        itemType: 'grammar',
-        content: lesson.grammarRule.name,
-        learnedAt: new Date(),
-        reviewCount: 1
-      }
-    })
-
-    // Save the 3 vocab words as LearnedItems
-    for (const word of lesson.vocabWords) {
+    console.log('Saving grammar rule as LearnedItem:', lesson.grammarRule.name)
+    try {
       await (prisma as any).learnedItem.upsert({
-        where: { userId_itemType_content: { userId: user.id, itemType: 'vocab', content: word.word } },
+        where: { userId_itemType_content: { userId: user.id, itemType: 'grammar', content: lesson.grammarRule.name } },
         update: { reviewCount: { increment: 1 }, lastReviewedAt: new Date() },
         create: {
           userId: user.id,
-          itemType: 'vocab',
-          content: word.word,
+          itemType: 'grammar',
+          content: lesson.grammarRule.name,
           learnedAt: new Date(),
           reviewCount: 1
         }
       })
+      console.log('Grammar rule saved successfully')
+    } catch (grammarError: any) {
+      console.error('Error saving grammar rule:', grammarError.message, grammarError.stack)
+      throw grammarError
+    }
+
+    // Save the 3 vocab words as LearnedItems
+    console.log('Saving', lesson.vocabWords.length, 'vocab words as LearnedItems')
+    for (const word of lesson.vocabWords) {
+      try {
+        await (prisma as any).learnedItem.upsert({
+          where: { userId_itemType_content: { userId: user.id, itemType: 'vocab', content: word.word } },
+          update: { reviewCount: { increment: 1 }, lastReviewedAt: new Date() },
+          create: {
+            userId: user.id,
+            itemType: 'vocab',
+            content: word.word,
+            learnedAt: new Date(),
+            reviewCount: 1
+          }
+        })
+        console.log('Vocab word saved:', word.word)
+      } catch (vocabError: any) {
+        console.error('Error saving vocab word', word.word, ':', vocabError.message, vocabError.stack)
+        throw vocabError
+      }
     }
 
     // Update EnglishProfile: increment totalSessions, update lastActiveDate, update streak
@@ -134,6 +179,7 @@ Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
       newStreak = 1
     }
 
+    console.log('Updating EnglishProfile - new streak:', newStreak, 'new totalSessions:', profile.totalSessions + 1)
     const updatedProfile = await (prisma as any).englishProfile.update({
       where: { userId: user.id },
       data: {
@@ -142,18 +188,27 @@ Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
         streak: newStreak
       }
     })
+    console.log('EnglishProfile updated successfully')
 
     // Save TrainerSession
-    await (prisma as any).trainerSession.create({
-      data: {
-        userId: user.id,
-        sessionType: 'learn',
-        topic: lesson.todayTopic,
-        grammarRule: lesson.grammarRule.name,
-        vocabWords: lesson.vocabWords
-      }
-    })
+    console.log('Creating TrainerSession record...')
+    try {
+      await (prisma as any).trainerSession.create({
+        data: {
+          userId: user.id,
+          sessionType: 'learn',
+          topic: lesson.todayTopic,
+          grammarRule: lesson.grammarRule.name,
+          vocabWords: lesson.vocabWords
+        }
+      })
+      console.log('TrainerSession created successfully')
+    } catch (sessionError: any) {
+      console.error('Error creating TrainerSession:', sessionError.message, sessionError.stack)
+      throw sessionError
+    }
 
+    console.log('Daily lesson completed successfully for user:', user.id)
     return NextResponse.json({
       lesson,
       profile: {
@@ -166,8 +221,10 @@ Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
     })
   } catch (error: any) {
     console.error('Daily lesson error:', error)
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
     return NextResponse.json(
-      { error: error.message || 'Failed to generate daily lesson' },
+      { error: error.message || 'Failed to generate daily lesson', details: error.stack },
       { status: 500 }
     )
   }
