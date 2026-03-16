@@ -1915,6 +1915,55 @@ GrammarWeaknessArea (auto-identified problems)
 ✅ Vocabulary confidence builds: "learning" → "learned"
 ```
 
+#### **UI Features (Frontend Integration)**
+
+The learning system is fully integrated into the dashboard and accessible across multiple pages:
+
+**Dashboard** (`/dashboard/home`)
+- **Today's 5 Words Widget** - Shows daily vocabulary words with learned/learning status
+- **Latest Writing Widget** - Displays most recent writing submission with scores (Grammar, Vocabulary, Overall)
+- **Grammar Focus Widget** - Shows top 3 grammar weaknesses with priority indicators
+- **Quick Statistics** - Hours logged this week, past papers attempted, sessions completed
+- All widgets auto-update with real-time data from learning system APIs
+
+**Vocabulary Page** (`/dashboard/vocabulary`)
+- **Today's Vocabulary Focus Section** - Grid display of 5 daily words
+- **Per-Word Cards** - Shows word name, definition, category, difficulty level, confidence stars
+- **Mark Learned Button** - Toggle word status between learning/learned with instant API update
+- **Learning Statistics** - Words mastered today, total vocabulary count, daily target completion %
+- **Quick Navigation** - Links to Writing Practice and Grammar Coach for immediate application
+- **Learn a Word Tab** - Traditional vocabulary learning with AI-powered definitions
+- **Improve My Writing Tab** - Submit text for vocabulary enhancement suggestions
+
+**Writing Practice Page** (`/dashboard/writing-practice`)
+- **Submission Form** - Title, prompt, writing content, difficulty level, focus area selection
+- **Async Feedback System** - Real-time polling for AI assessment results
+- **Score Display** - 4 cards showing Grammar (0-10), Vocabulary (0-10), Structure (0-10), Overall (0-10)
+- **Feedback Sections** - Grammar errors with corrections, vocabulary analysis, strengths, improvements
+- **Grammar Area Indicator** - Links identified weak areas to Grammar Coach
+- **Past Submissions View** - Scroll through all previous writing attempts with scores
+
+**Learning Journal Page** (`/dashboard/learning-journal`)
+- **Sidebar** - Today's 5 vocabulary words with learned status indicators
+- **Journal Editor** - Edit/view mode toggle for flexible interaction
+- **Full Reflection Fields**:
+  - Meaning (student's own explanation)
+  - Example Sentences (3 free-text inputs)
+  - Personal Notes (mnemonics and memory tricks)
+  - Grammar Rules Applied (tag-based management)
+  - Areas of Confusion (free-text)
+  - Practice Scenarios (tag-based examples)
+- **Complete CRUD** - Create, read, update, delete journal entries per word
+- **Word Progress Badges** - Status (learning|learned|needs_practice) with confidence stars
+
+**Grammar Coach Page** (`/dashboard/grammar-coach`)
+- **Weakness List View** - All identified grammar areas with descriptions
+- **Statistics Display** - Instance count, practice attempts, improvement rate, last occurrence date
+- **Sorting Options** - Sort by urgency, frequency, or recency
+- **Exercise System** - 5 progressive exercises per weakness (Level 1-5)
+- **Exercise Types** - Fill-blank, rewrite, choose-correct, identify-and-fix, scenario-based
+- **Show/Hide Answers** - Button to reveal expected answers and explanations
+
 ---
 
 ## Development Guide
