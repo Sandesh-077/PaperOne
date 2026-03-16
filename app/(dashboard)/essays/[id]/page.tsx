@@ -13,6 +13,9 @@ interface Essay {
   wordCount: number
   grade?: string
   notes?: string
+  essayType?: string
+  aiFeedback?: any
+  aiFeedbackAt?: string
   createdAt: string
 }
 
@@ -22,9 +25,12 @@ export default function ViewEssayPage() {
   const [essay, setEssay] = useState<Essay | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [feedback, setFeedback] = useState<any>(null)
+  const [generatingFeedback, setGeneratingFeedback] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     prompt: '',
+    essayType: 'full' as string,
     content: '',
     grade: '',
     notes: ''
@@ -46,10 +52,14 @@ export default function ViewEssayPage() {
         setFormData({
           title: data.title,
           prompt: data.prompt || '',
+          essayType: data.essayType || 'full',
           content: data.content,
           grade: data.grade || '',
           notes: data.notes || ''
         })
+        if (data.aiFeedback) {
+          setFeedback(data.aiFeedback)
+        }
       }
     } catch (error) {
       console.error('Failed to fetch essay:', error)
@@ -74,6 +84,27 @@ export default function ViewEssayPage() {
       }
     } catch (error) {
       console.error('Failed to update essay:', error)
+    }
+  }
+
+  const generateFeedback = async () => {
+    setGeneratingFeedback(true)
+    try {
+      const response = await fetch(`/api/essays/${params.id}/feedback`, {
+        method: 'POST'
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setFeedback(data.feedback)
+      } else {
+        alert('Failed to generate feedback')
+      }
+    } catch (error) {
+      console.error('Failed to generate feedback:', error)
+      alert('Error generating feedback')
+    } finally {
+      setGeneratingFeedback(false)
     }
   }
 
@@ -113,14 +144,31 @@ export default function ViewEssayPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Prompt</label>
-              <textarea
-                value={formData.prompt}
-                onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
-                rows={2}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Essay Type *</label>
+              <div className="flex flex-wrap gap-2">
+                {['full', 'introduction', 'conclusion', 'argument', 'counterclaim', 'rebuttal'].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, essayType: type })}
+                    className={`px-4 py-2 rounded-full font-medium transition-colors ${
+                      formData.essayType === type
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {type === 'full' ? 'Full Essay' :
+                     type === 'introduction' ? 'Introduction' :
+                     type === 'conclusion' ? 'Conclusion' :
+                     type === 'argument' ? 'Argument Paragraph' :
+                     type === 'counterclaim' ? 'Counter-claim' :
+                     'Rebuttal'}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            <div>
 
             <div>
               <div className="flex justify-between items-center mb-2">
@@ -215,6 +263,150 @@ export default function ViewEssayPage() {
             <p className="text-gray-900 whitespace-pre-wrap leading-relaxed">{essay.content}</p>
           </div>
         </div>
+
+        {/* AI Feedback Button */}
+        {essay.id && (
+          <div className="pt-6 border-t border-gray-200">
+            <button
+              onClick={generateFeedback}
+              disabled={generatingFeedback}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+              {generatingFeedback ? (
+                <>
+                  <span className="animate-spin">⏳</span>
+                  Analysing against GP 8021 mark scheme...
+                </>
+              ) : feedback ? (
+                <>
+                  🔄 Regenerate AI Feedback
+                </>
+              ) : (
+                <>
+                  ✨ Get AI Feedback (GP 8021)
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Feedback Results */}
+        {feedback && (
+          <div className="pt-6 border-t border-gray-200 space-y-6">
+            <div className="relative">
+              <h3 className="text-sm font-semibold text-gray-700 mb-4">📊 CAMBRIDGE GP 8021 EVALUATION</h3>
+              
+              {/* Three AO Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {/* AO1 Content */}
+                <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                  <div className="mb-3">
+                    <h4 className="font-bold text-blue-900 text-lg">{feedback.ao1?.band || 'Band'}</h4>
+                    <p className="text-sm text-blue-700 font-semibold">{feedback.ao1?.score || 'Score'}</p>
+                    <p className="text-xs text-blue-600 mt-1">AO1: Content</p>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-blue-900 mb-2">✓ Strengths:</p>
+                    <ul className="text-xs text-blue-800 space-y-1">
+                      {feedback.ao1?.strengths?.map((s: string, i: number) => (
+                        <li key={i} className="ml-2">• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-orange-900 mb-2">→ Improvements:</p>
+                    <ul className="text-xs text-orange-800 space-y-1">
+                      {feedback.ao1?.improvements?.map((imp: string, i: number) => (
+                        <li key={i} className="ml-2">• {imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* AO2 Language */}
+                <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                  <div className="mb-3">
+                    <h4 className="font-bold text-green-900 text-lg">{feedback.ao2?.band || 'Band'}</h4>
+                    <p className="text-sm text-green-700 font-semibold">{feedback.ao2?.score || 'Score'}</p>
+                    <p className="text-xs text-green-600 mt-1">AO2: Language</p>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-green-900 mb-2">✓ Strengths:</p>
+                    <ul className="text-xs text-green-800 space-y-1">
+                      {feedback.ao2?.strengths?.map((s: string, i: number) => (
+                        <li key={i} className="ml-2">• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-orange-900 mb-2">→ Improvements:</p>
+                    <ul className="text-xs text-orange-800 space-y-1">
+                      {feedback.ao2?.improvements?.map((imp: string, i: number) => (
+                        <li key={i} className="ml-2">• {imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* AO3 Structure */}
+                <div className="border border-purple-200 bg-purple-50 rounded-lg p-4">
+                  <div className="mb-3">
+                    <h4 className="font-bold text-purple-900 text-lg">{feedback.ao3?.band || 'Band'}</h4>
+                    <p className="text-sm text-purple-700 font-semibold">{feedback.ao3?.score || 'Score'}</p>
+                    <p className="text-xs text-purple-600 mt-1">AO3: Structure</p>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <p className="text-xs font-semibold text-purple-900 mb-2">✓ Strengths:</p>
+                    <ul className="text-xs text-purple-800 space-y-1">
+                      {feedback.ao3?.strengths?.map((s: string, i: number) => (
+                        <li key={i} className="ml-2">• {s}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold text-orange-900 mb-2">→ Improvements:</p>
+                    <ul className="text-xs text-orange-800 space-y-1">
+                      {feedback.ao3?.improvements?.map((imp: string, i: number) => (
+                        <li key={i} className="ml-2">• {imp}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary Bar */}
+              {feedback.overall && (
+                <div className="bg-gray-900 text-white rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-300">Total Score</p>
+                    <p className="text-2xl font-bold">{feedback.overall.total || '0/50'}</p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-300">Grade</p>
+                    <p className="text-3xl font-bold text-blue-400">{feedback.overall.grade || '-'}</p>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-300">🎯 Top Priority</p>
+                    <p className="text-xs text-red-400">{feedback.overall.topFix || 'N/A'}</p>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-gray-300">⭐ Top Strength</p>
+                    <p className="text-xs text-green-400">{feedback.overall.topStrength || 'N/A'}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {essay.notes && (
           <div className="pt-6 border-t border-gray-200">

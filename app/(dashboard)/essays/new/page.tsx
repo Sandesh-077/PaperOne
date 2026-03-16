@@ -11,6 +11,7 @@ function NewEssayForm() {
     title: '',
     topic: '',
     prompt: '',
+    essayType: 'full' as string,
     content: '',
     grade: '',
     notes: ''
@@ -131,10 +132,31 @@ function NewEssayForm() {
           </div>
 
           <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="block text-sm font-medium text-gray-700">Essay Content</label>
-              <span className="text-sm font-medium text-gray-700">{wordCount} words</span>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Essay Type *</label>
+            <div className="flex flex-wrap gap-2">
+              {['full', 'introduction', 'conclusion', 'argument', 'counterclaim', 'rebuttal'].map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, essayType: type })}
+                  className={`px-4 py-2 rounded-full font-medium transition-colors ${
+                    formData.essayType === type
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {type === 'full' ? 'Full Essay' :
+                   type === 'introduction' ? 'Introduction' :
+                   type === 'conclusion' ? 'Conclusion' :
+                   type === 'argument' ? 'Argument Paragraph' :
+                   type === 'counterclaim' ? 'Counter-claim' :
+                   'Rebuttal'}
+                </button>
+              ))}
             </div>
+          </div>
+
+          <div>
             <textarea
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
