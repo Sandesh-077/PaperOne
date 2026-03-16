@@ -55,10 +55,9 @@ export default function SessionLogPage() {
     // Revision & Practice Fields
     chapter: '',
     questionsAttempted: '',
-    // Existing
+    questionsCorrect: '',
+    // Session tracking
     deepFocusScore: 5,
-    questionsAttempted: '', // deprecated
-    questionsCorrect: '', // deprecated
     mistakeType: '',
     distractionCount: 0,
     notes: ''
