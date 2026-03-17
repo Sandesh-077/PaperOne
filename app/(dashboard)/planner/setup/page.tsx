@@ -40,7 +40,8 @@ export default function PlannerSetupPage() {
   const [topicsData, setTopicsData] = useState({
     selectedSubject: '',
     selectedPaper: '',
-    topicsText: ''
+    topicsText: '',
+    copyFromPaper: ''
   })
 
   // Fetch exams on mount
@@ -170,7 +171,7 @@ export default function PlannerSetupPage() {
       }
 
       // Reset form
-      setTopicsData({ selectedSubject: '', selectedPaper: '', topicsText: '' })
+      setTopicsData({ selectedSubject: '', selectedPaper: '', topicsText: '', copyFromPaper: '' })
     } catch (err) {
       setError('Error adding topics')
       console.error(err)
@@ -183,6 +184,44 @@ export default function PlannerSetupPage() {
   const subjectCodes = [...new Set(exams.map(e => e.subject))]
   const papersBySubject = (subject: string) => {
     return exams.filter(e => e.subject === subject)
+  }
+
+  const handleCopyTopics = async (fromPaperCode: string, toPaperCode: string, subject: string) => {
+    if (!fromPaperCode || !toPaperCode) return
+    
+    setLoading(true)
+    try {
+      // Fetch topics from source paper
+      const response = await fetch(`/api/paper-topics?subject=${encodeURIComponent(subject)}&paperCode=${encodeURIComponent(fromPaperCode)}`)
+      if (!response.ok) throw new Error('Failed to fetch source topics')
+      
+      const data = await response.json()
+      const sourceTopics = data.topics || []
+
+      // Create topics for destination paper
+      for (const topic of sourceTopics) {
+        await fetch('/api/paper-topics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject: topic.subject,
+            subjectName: topic.subjectName,
+            paperCode: toPaperCode,
+            paperName: exams.find(e => e.paperCode === toPaperCode)?.paperName || '',
+            topicName: topic.topicName,
+            topicOrder: topic.topicOrder,
+            source: 'copied'
+          })
+        })
+      }
+
+      setTopicsData({ selectedSubject: '', selectedPaper: '', topicsText: '', copyFromPaper: '' })
+    } catch (err) {
+      setError('Error copying topics')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleGeneratePlan = async () => {
@@ -413,13 +452,54 @@ export default function PlannerSetupPage() {
                           {exam.paperCode} - {exam.paperName}
                         </p>
                         
+                        {/* Copy Topics Option */}
+                        <div className="mb-4 pb-4 border-b border-gray-200">
+                          <p className="text-xs font-medium text-gray-600 mb-2">Quick copy topics from another paper:</p>
+                          <div className="flex gap-2">
+                            <select
+                              value={topicsData.selectedPaper === exam.paperCode ? topicsData.copyFromPaper : ''}
+                              onChange={(e) => {
+                                setTopicsData({
+                                  selectedSubject: exam.subject,
+                                  selectedPaper: exam.paperCode,
+                                  topicsText: '',
+                                  copyFromPaper: e.target.value
+                                })
+                              }}
+                              className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="">Select paper to copy from...</option>
+                              {subjectExams
+                                .filter(e => e.paperCode !== exam.paperCode)
+                                .map(e => (
+                                  <option key={e.id} value={e.paperCode}>
+                                    {e.paperCode}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              onClick={() => {
+                                if (topicsData.copyFromPaper) {
+                                  handleCopyTopics(topicsData.copyFromPaper, exam.paperCode, exam.subject)
+                                }
+                              }}
+                              disabled={!topicsData.copyFromPaper || loading}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded transition disabled:opacity-50"
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Manual Topic Entry */}
                         <form
                           onSubmit={(e) => {
                             e.preventDefault()
                             setTopicsData({
                               selectedSubject: exam.subject,
                               selectedPaper: exam.paperCode,
-                              topicsText: ''
+                              topicsText: '',
+                              copyFromPaper: ''
                             })
                             handleAddTopics(e)
                           }}
@@ -440,7 +520,8 @@ export default function PlannerSetupPage() {
                                 setTopicsData({
                                   selectedSubject: exam.subject,
                                   selectedPaper: exam.paperCode,
-                                  topicsText: topicsData.selectedPaper === exam.paperCode ? topicsData.topicsText : ''
+                                  topicsText: topicsData.selectedPaper === exam.paperCode ? topicsData.topicsText : '',
+                                  copyFromPaper: ''
                                 })
                               }}
                               placeholder="Atomic structure&#10;Bonding&#10;States of matter&#10;Energy..."
