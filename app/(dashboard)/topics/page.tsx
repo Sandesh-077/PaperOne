@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface PaperTopic {
@@ -106,7 +106,7 @@ export default function TopicsPage() {
   const totalTopics = filteredTopics.length
 
   // Get unique subjects
-  const subjects = [...new Set(topics.map(t => t.subject))]
+  const subjects = useMemo(() => [...new Set(topics.map(t => t.subject))], [topics])
   
   useEffect(() => {
     console.log('📊 All topics loaded:', topics.length)
