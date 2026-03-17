@@ -46,16 +46,24 @@ export default function TopicsPage() {
         const url = new URL('/api/paper-topics', window.location.origin)
         if (selectedSubject) url.searchParams.append('subject', selectedSubject)
         
+        console.log('🔵 Fetching topics from:', url.toString())
         const response = await fetch(url)
+        console.log('🟢 Response status:', response.status)
+        
         if (response.ok) {
           const data = await response.json()
+          console.log('📊 Topics received:', data.topics)
           setTopics(data.topics || [])
           
           // Set default selected subject to first subject if not set
           if (!selectedSubject && data.topics.length > 0) {
             const firstSubject = data.topics[0].subject
+            console.log('📌 Setting default subject:', firstSubject)
             setSelectedSubject(firstSubject)
           }
+        } else {
+          const error = await response.text()
+          console.error('❌ API Error:', response.status, error)
         }
       } catch (err) {
         console.error('Failed to fetch topics:', err)
@@ -141,25 +149,36 @@ export default function TopicsPage() {
 
     try {
       const paper = topics.find(t => t.paperCode === paperCode)
-      if (!paper) return
+      if (!paper) {
+        console.error('Paper not found:', paperCode)
+        return
+      }
 
+      const payload = {
+        subject: subject,
+        subjectName: paper.subjectName,
+        paperCode: paperCode,
+        paperName: paper.paperName,
+        topicName: newTopicInput.trim(),
+        source: 'manual'
+      }
+
+      console.log('➕ Adding topic with payload:', payload)
       const response = await fetch('/api/paper-topics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: subject,
-          subjectName: paper.subjectName,
-          paperCode: paperCode,
-          paperName: paper.paperName,
-          topicName: newTopicInput.trim(),
-          source: 'manual'
-        })
+        body: JSON.stringify(payload)
       })
 
+      console.log('📮 Add topic response status:', response.status)
       if (response.ok) {
-        const newTopic = await response.json()
-        setTopics([...topics, newTopic.topic])
+        const data = await response.json()
+        console.log('✅ Topic created:', data.topic)
+        setTopics([...topics, data.topic])
         setNewTopicInput('')
+      } else {
+        const error = await response.text()
+        console.error('❌ Failed to add topic:', response.status, error)
       }
     } catch (err) {
       console.error('Failed to add topic:', err)
