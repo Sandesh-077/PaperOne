@@ -36,7 +36,7 @@ export default function TopicsPage() {
   const [editingPaper, setEditingPaper] = useState<string | null>(null)
   const [newTopicInput, setNewTopicInput] = useState<string>('')
 
-  // Fetch topics on mount and when subject changes
+  // Fetch all topics on mount only
   useEffect(() => {
     if (!session) return
 
@@ -44,9 +44,9 @@ export default function TopicsPage() {
       setLoading(true)
       try {
         const url = new URL('/api/paper-topics', window.location.origin)
-        if (selectedSubject) url.searchParams.append('subject', selectedSubject)
+        // Don't filter by selectedSubject - fetch ALL topics
         
-        console.log('🔵 Fetching topics from:', url.toString())
+        console.log('🔵 Fetching all topics from:', url.toString())
         const response = await fetch(url)
         console.log('🟢 Response status:', response.status)
         
@@ -73,11 +73,9 @@ export default function TopicsPage() {
     }
 
     fetchTopics()
-  }, [session, selectedSubject])
+  }, [session])
 
-  // Note: fetchTopics moved inside useEffect to avoid dependency issues
-
-  // Group topics by paper
+  // Group topics by paper (filter locally, not from API)
   const filteredTopics = selectedSubject
     ? topics.filter(t => t.subject === selectedSubject)
     : topics
