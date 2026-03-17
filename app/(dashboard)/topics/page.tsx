@@ -36,34 +36,36 @@ export default function TopicsPage() {
 
   // Fetch topics on mount and when subject changes
   useEffect(() => {
-    if (session) {
-      fetchTopics()
-    }
-  }, [session])
+    if (!session) return
 
-  const fetchTopics = async () => {
-    setLoading(true)
-    try {
-      const url = new URL('/api/paper-topics', window.location.origin)
-      if (selectedSubject) url.searchParams.append('subject', selectedSubject)
-      
-      const response = await fetch(url)
-      if (response.ok) {
-        const data = await response.json()
-        setTopics(data.topics || [])
+    const fetchTopics = async () => {
+      setLoading(true)
+      try {
+        const url = new URL('/api/paper-topics', window.location.origin)
+        if (selectedSubject) url.searchParams.append('subject', selectedSubject)
         
-        // Set default selected subject to first subject if not set
-        if (!selectedSubject && data.topics.length > 0) {
-          const firstSubject = data.topics[0].subject
-          setSelectedSubject(firstSubject)
+        const response = await fetch(url)
+        if (response.ok) {
+          const data = await response.json()
+          setTopics(data.topics || [])
+          
+          // Set default selected subject to first subject if not set
+          if (!selectedSubject && data.topics.length > 0) {
+            const firstSubject = data.topics[0].subject
+            setSelectedSubject(firstSubject)
+          }
         }
+      } catch (err) {
+        console.error('Failed to fetch topics:', err)
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error('Failed to fetch topics:', err)
-    } finally {
-      setLoading(false)
     }
-  }
+
+    fetchTopics()
+  }, [session, selectedSubject])
+
+  // Note: fetchTopics moved inside useEffect to avoid dependency issues
 
   // Group topics by paper
   const filteredTopics = selectedSubject
