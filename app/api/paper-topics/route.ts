@@ -21,6 +21,8 @@ export async function GET(req: Request) {
     const subject = url.searchParams.get('subject')
     const paperCode = url.searchParams.get('paperCode')
 
+    console.log('📋 Fetching topics - user:', user.id, 'subject:', subject, 'paperCode:', paperCode)
+
     const where: any = { userId: user.id }
     if (subject) where.subject = subject
     if (paperCode) where.paperCode = paperCode
@@ -30,10 +32,19 @@ export async function GET(req: Request) {
       orderBy: [{ paperCode: 'asc' }, { topicOrder: 'asc' }]
     })
 
+    console.log('✅ Topics found:', topics.length)
     return NextResponse.json({ topics })
-  } catch (error) {
-    console.error('Error fetching paper topics:', error)
-    return NextResponse.json({ error: 'Failed to fetch topics' }, { status: 500 })
+  } catch (error: any) {
+    console.error('❌ Error fetching paper topics:')
+    console.error('  Name:', error.name)
+    console.error('  Message:', error.message)
+    console.error('  Code:', error.code)
+    console.error('  Stack:', error.stack)
+    return NextResponse.json({ 
+      error: 'Failed to fetch topics', 
+      details: error.message,
+      code: error.code 
+    }, { status: 500 })
   }
 }
 
