@@ -33,6 +33,8 @@ export default function TopicsPage() {
   const [selectedSubject, setSelectedSubject] = useState<string>('')
   const [expandedPapers, setExpandedPapers] = useState<Set<string>>(new Set())
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null)
+  const [editingPaper, setEditingPaper] = useState<string | null>(null)
+  const [newTopicInput, setNewTopicInput] = useState<string>('')
 
   // Fetch topics on mount and when subject changes
   useEffect(() => {
@@ -115,6 +117,52 @@ export default function TopicsPage() {
       }
     } catch (err) {
       console.error('Failed to update topic:', err)
+    }
+  }
+
+  const handleDeleteTopic = async (topicId: string) => {
+    if (!confirm('Delete this topic?')) return
+    
+    try {
+      const response = await fetch(`/api/paper-topics/${topicId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        setTopics(topics.filter(t => t.id !== topicId))
+      }
+    } catch (err) {
+      console.error('Failed to delete topic:', err)
+    }
+  }
+
+  const handleAddTopic = async (paperCode: string, subject: string) => {
+    if (!newTopicInput.trim()) return
+
+    try {
+      const paper = topics.find(t => t.paperCode === paperCode)
+      if (!paper) return
+
+      const response = await fetch('/api/paper-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: subject,
+          subjectName: paper.subjectName,
+          paperCode: paperCode,
+          paperName: paper.paperName,
+          topicName: newTopicInput.trim(),
+          source: 'manual'
+        })
+      })
+
+      if (response.ok) {
+        const newTopic = await response.json()
+        setTopics([...topics, newTopic.topic])
+        setNewTopicInput('')
+      }
+    } catch (err) {
+      console.error('Failed to add topic:', err)
     }
   }
 
@@ -229,6 +277,29 @@ export default function TopicsPage() {
         </div>
       )}
 
+      {/* All Topics for Selected Subject */}
+      {selectedSubject && filteredTopics.length > 0 && (
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">📌 All Topics for {selectedSubject}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {filteredTopics.map(topic => (
+              <div key={topic.id} className="bg-white rounded-lg p-3 border border-gray-200 shadow-xs">
+                <div className="flex items-start gap-2">
+                  <span className="text-lg flex-shrink-0 mt-1">{getConfidenceEmoji(topic.confidenceScore)}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm text-gray-900 truncate">{topic.topicName}</h3>
+                    <p className="text-xs text-gray-600 mt-1">{topic.paperCode}</p>
+                    {topic.needsRevision && (
+                      <p className="text-xs text-amber-700 font-medium mt-1">⚠️ Needs revision</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Papers and Topics */}
       <div className="space-y-3">
         {sortedPapers.length === 0 ? (
@@ -264,6 +335,19 @@ export default function TopicsPage() {
                       </div>
                       <p className="text-xs text-gray-600 mt-1">{paperReady}/{paper.topics.length} confident</p>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditingPaper(editingPaper === paper.paperCode ? null : paper.paperCode)
+                      }}
+                      className={`px-3 py-1 text-sm font-medium rounded transition ${
+                        editingPaper === paper.paperCode
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {editingPaper === paper.paperCode ? '✓ Done' : '✏️ Edit'}
+                    </button>
                     <span className="text-gray-400">{isExpanded ? '▼' : '▶'}</span>
                   </div>
                 </button>
@@ -276,7 +360,9 @@ export default function TopicsPage() {
                       .map(topic => (
                         <div
                           key={topic.id}
-                          className="px-6 py-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition flex items-center justify-between"
+                          className={`px-6 py-4 border-b border-gray-100 last:border-b-0 transition flex items-center justify-between ${
+                            editingPaper === paper.paperCode ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'
+                          }`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start gap-3">
@@ -293,32 +379,71 @@ export default function TopicsPage() {
                             </div>
                           </div>
 
-                          {/* Confidence Picker */}
+                          {/* Actions */}
                           <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                            {editingTopicId === topic.id ? (
-                              <div className="flex gap-1">
-                                {[0, 1, 2, 3, 4, 5].map(score => (
-                                  <button
-                                    key={score}
-                                    onClick={() => handleConfidenceChange(topic.id, score)}
-                                    className={`w-8 h-8 rounded text-sm font-medium transition ${getConfidenceColor(score)}`}
-                                    title={score === 0 ? 'Not started' : `Confidence ${score}`}
-                                  >
-                                    {getConfidenceEmoji(score)}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
+                            {editingPaper === paper.paperCode ? (
                               <button
-                                onClick={() => setEditingTopicId(topic.id)}
-                                className={`px-3 py-1 rounded-full text-sm font-medium transition ${getConfidenceColor(topic.confidenceScore)}`}
+                                onClick={() => handleDeleteTopic(topic.id)}
+                                className="px-3 py-1 text-sm rounded bg-red-100 text-red-700 hover:bg-red-200 transition"
                               >
-                                {getConfidenceEmoji(topic.confidenceScore)} {topic.confidenceScore > 0 ? topic.confidenceScore : 'Start'}
+                                🗑️ Delete
                               </button>
+                            ) : (
+                              <>
+                                {editingTopicId === topic.id ? (
+                                  <div className="flex gap-1">
+                                    {[0, 1, 2, 3, 4, 5].map(score => (
+                                      <button
+                                        key={score}
+                                        onClick={() => handleConfidenceChange(topic.id, score)}
+                                        className={`w-8 h-8 rounded text-sm font-medium transition ${getConfidenceColor(score)}`}
+                                        title={score === 0 ? 'Not started' : `Confidence ${score}`}
+                                      >
+                                        {getConfidenceEmoji(score)}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setEditingTopicId(topic.id)}
+                                    className={`px-3 py-1 rounded-full text-sm font-medium transition ${getConfidenceColor(topic.confidenceScore)}`}
+                                  >
+                                    {getConfidenceEmoji(topic.confidenceScore)} {topic.confidenceScore > 0 ? topic.confidenceScore : 'Start'}
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
                       ))}
+
+                    {/* Add New Topic Section */}
+                    {editingPaper === paper.paperCode && (
+                      <div className="px-6 py-4 bg-blue-50 border-t border-blue-200">
+                        <label className="block text-sm font-medium text-gray-900 mb-2">Add New Topic</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newTopicInput}
+                            onChange={(e) => setNewTopicInput(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleAddTopic(paper.paperCode, selectedSubject)
+                              }
+                            }}
+                            placeholder="Enter topic name..."
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                          />
+                          <button
+                            onClick={() => handleAddTopic(paper.paperCode, selectedSubject)}
+                            disabled={!newTopicInput.trim()}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
