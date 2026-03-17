@@ -37,6 +37,12 @@ export default function PlannerSetupPage() {
     targetScore: ''
   })
 
+  const [topicsData, setTopicsData] = useState({
+    selectedSubject: '',
+    selectedPaper: '',
+    topicsText: ''
+  })
+
   // Fetch exams on mount
   useEffect(() => {
     if (session) {
@@ -129,6 +135,54 @@ export default function PlannerSetupPage() {
     } catch (err) {
       console.error('Failed to delete exam:', err)
     }
+  }
+
+  const handleAddTopics = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!topicsData.selectedSubject || !topicsData.selectedPaper || !topicsData.topicsText.trim()) {
+      setError('Please select subject, paper, and enter topics')
+      return
+    }
+
+    setError('')
+    setLoading(true)
+    try {
+      const topicsList = topicsData.topicsText
+        .split('\n')
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
+
+      // Create topics one by one
+      for (const topicName of topicsList) {
+        await fetch('/api/paper-topics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject: topicsData.selectedSubject,
+            subjectName: exams.find(e => e.subject === topicsData.selectedSubject)?.subjectName || '',
+            paperCode: topicsData.selectedPaper,
+            paperName: exams.find(e => e.paperCode === topicsData.selectedPaper)?.paperName || '',
+            topicName: topicName,
+            topicOrder: topicsList.indexOf(topicName),
+            source: 'manual'
+          })
+        })
+      }
+
+      // Reset form
+      setTopicsData({ selectedSubject: '', selectedPaper: '', topicsText: '' })
+    } catch (err) {
+      setError('Error adding topics')
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Get unique subjects with their papers
+  const subjectCodes = [...new Set(exams.map(e => e.subject))]
+  const papersBySubject = (subject: string) => {
+    return exams.filter(e => e.subject === subject)
   }
 
   const handleGeneratePlan = async () => {
@@ -333,11 +387,99 @@ export default function PlannerSetupPage() {
         </div>
       </div>
 
+      {/* Topics Management Section */}
+      {exams.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">📚 Manage Topics</h2>
+          <p className="text-gray-600 mb-4">Add topics for each subject and paper (optional - helps with study planning)</p>
+
+          {/* Subject Cards */}
+          <div className="grid grid-cols-1 gap-4 mb-6">
+            {subjectCodes.map(subject => {
+              const subjectExams = papersBySubject(subject)
+              const subjectName = subjectExams[0]?.subjectName || subject
+              
+              return (
+                <div key={subject} className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    {subjectName} <span className="text-sm font-normal text-gray-600">({subject})</span>
+                  </h3>
+
+                  {/* Paper Subsections */}
+                  <div className="space-y-4">
+                    {subjectExams.map(exam => (
+                      <div key={exam.id} className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <p className="font-medium text-gray-900 mb-3">
+                          {exam.paperCode} - {exam.paperName}
+                        </p>
+                        
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault()
+                            setTopicsData({
+                              selectedSubject: exam.subject,
+                              selectedPaper: exam.paperCode,
+                              topicsText: ''
+                            })
+                            handleAddTopics(e)
+                          }}
+                          className="space-y-3"
+                        >
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-2">
+                              Add Topics (one per line)
+                            </label>
+                            <textarea
+                              value={topicsData.selectedPaper === exam.paperCode ? topicsData.topicsText : ''}
+                              onChange={(e) => {
+                                if (topicsData.selectedPaper === exam.paperCode) {
+                                  setTopicsData({ ...topicsData, topicsText: e.target.value })
+                                }
+                              }}
+                              onFocus={() => {
+                                setTopicsData({
+                                  selectedSubject: exam.subject,
+                                  selectedPaper: exam.paperCode,
+                                  topicsText: topicsData.selectedPaper === exam.paperCode ? topicsData.topicsText : ''
+                                })
+                              }}
+                              placeholder="Atomic structure&#10;Bonding&#10;States of matter&#10;Energy..."
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                              rows={3}
+                            />
+                          </div>
+                          
+                          {topicsData.selectedPaper === exam.paperCode && (
+                            <button
+                              type="submit"
+                              disabled={loading || !topicsData.topicsText.trim()}
+                              className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition disabled:opacity-50"
+                            >
+                              {loading ? 'Adding...' : 'Add Topics'}
+                            </button>
+                          )}
+                        </form>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Generate Plan Section */}
       {exams.length > 0 && (
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg p-8 text-white shadow-lg">
           <h2 className="text-2xl font-bold mb-2">🚀 Generate Your Revision Plan</h2>
           <p className="opacity-90 mb-6">The AI will analyze your exams and create a personalized study schedule</p>
+          
+          {error && error.includes('JSON') && (
+            <div className="bg-red-500 bg-opacity-20 border border-red-300 rounded-lg p-4 mb-6">
+              <p className="text-sm">⚠️ AI response error. Try again in a moment or skip plan generation and manage topics manually above.</p>
+            </div>
+          )}
           
           <div className="bg-white bg-opacity-20 rounded-lg p-4 mb-6">
             <div className="flex items-center gap-4">
