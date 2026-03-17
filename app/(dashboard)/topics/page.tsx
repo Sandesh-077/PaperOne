@@ -107,6 +107,16 @@ export default function TopicsPage() {
 
   // Get unique subjects
   const subjects = [...new Set(topics.map(t => t.subject))]
+  
+  useEffect(() => {
+    console.log('📊 All topics loaded:', topics.length)
+    console.log('📌 Unique subjects found:', subjects)
+    console.log('🔍 Current selected subject:', selectedSubject)
+    console.log('📋 Filtered topics for selected subject:', filteredTopics.length)
+    topics.forEach(t => {
+      console.log(`  - ${t.subject} / ${t.paperCode}: ${t.topicName}`)
+    })
+  }, [topics, subjects, selectedSubject, filteredTopics])
 
   const handleConfidenceChange = async (topicId: string, newScore: number) => {
     try {
