@@ -73,6 +73,7 @@ export default function TopicsPage() {
     }
 
     fetchTopics()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session])
 
   // Group topics by paper (filter locally, not from API)
