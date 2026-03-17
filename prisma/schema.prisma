@@ -37,6 +37,8 @@ model User {
   englishProfile     EnglishProfile?
   trainerSessions    TrainerSession[]
   learnedItems       LearnedItem[]
+  paperTopics        PaperTopic[]
+  pomodoroSessions   PomodoroSession[]
 }
 
 model Error {
@@ -423,6 +425,7 @@ model DailyTask {
   sessionSlot String // e.g., "Morning", "Afternoon", "Evening"
   subject     String // Subject code
   subjectName String // Display name
+  topicName   String? // which topic this task covers
 
   taskDesc String @db.Text // Task description
   taskType String // "Revision" | "PastPaper" | "TopicalReview" | "Practice"
@@ -704,4 +707,63 @@ model LearnedItem {
 
   @@unique([userId, itemType, content])
   @@index([userId])
+}
+
+// Paper Topics - tracks topics for specific papers across different curriculums
+model PaperTopic {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject       String   // subject code e.g. "9701"
+  subjectName   String   // e.g. "Chemistry"
+  paperCode     String   // e.g. "9701/42"
+  paperName     String   // e.g. "A2 Structured Questions"
+  topicName     String   // e.g. "Electrochemistry"
+  topicOrder    Int      @default(0)
+
+  // Mastery tracking
+  confidenceScore   Int      @default(0)  // 0=not started, 1-5
+  sessionsLogged    Int      @default(0)
+  lastStudied       DateTime?
+  needsRevision     Boolean  @default(false)
+  isCompleted       Boolean  @default(false)
+
+  // Source: "syllabus" (pre-filled) or "custom" (user added)
+  source        String   @default("syllabus")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, subject, paperCode, topicName])
+  @@index([userId])
+  @@index([userId, subject, paperCode])
+}
+
+// Pomodoro Sessions - records every pomodoro timer session
+model PomodoroSession {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Timer settings
+  workMinutes     Int      // e.g. 25
+  breakMinutes    Int      // e.g. 5
+  cyclesCompleted Int      @default(0)
+
+  // What the user was studying
+  subject         String?
+  paperCode       String?
+  topicName       String?
+  dailyTaskId     String?  // optional link to DailyTask
+
+  // Outcome
+  status          String   @default("completed")  // "completed" | "abandoned"
+  totalMinutes    Int      @default(0)  // actual minutes spent
+
+  startedAt       DateTime @default(now())
+  endedAt         DateTime?
+
+  @@index([userId])
+  @@index([startedAt])
 }
