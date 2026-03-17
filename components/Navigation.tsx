@@ -11,6 +11,7 @@ const navigationGroups = [
     items: [
       { name: 'Dashboard', href: '/dashboard' },
       { name: 'Planner', href: '/planner' },
+      { name: 'Topics', href: '/topics' },
       { name: 'Session Log', href: '/session-log' },
       { name: 'Sessions', href: '/sessions' },
     ]
@@ -40,6 +41,7 @@ const navigationGroups = [
   {
     label: 'Tools',
     items: [
+      { name: 'Focus Timer', href: '/timer', target: '_blank' },
       { name: 'Pomodoro', href: '/pomodoro-routine' },
     ]
   },
@@ -74,6 +76,8 @@ function DropdownMenu({ label, items, pathname }: { label: string; items: any[];
               <Link
                 key={item.name}
                 href={item.href}
+                target={item.target}
+                rel={item.target === '_blank' ? 'noopener noreferrer' : undefined}
                 className={`block px-4 py-2 text-sm ${
                   isActive
                     ? 'text-blue-600 bg-blue-50'
@@ -167,6 +171,8 @@ export function Navigation() {
                         <Link
                           key={item.name}
                           href={item.href}
+                          target={item.target}
+                          rel={item.target === '_blank' ? 'noopener noreferrer' : undefined}
                           onClick={() => {
                             setMobileMenuOpen(false)
                             setOpenDropdown(null)

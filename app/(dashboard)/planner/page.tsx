@@ -14,6 +14,13 @@ interface DailyTask {
   completed: boolean
 }
 
+interface PomodoroSession {
+  id: string
+  subject: string | null
+  topicName: string | null
+  totalMinutes: number
+}
+
 interface WeekDay {
   date: string
   dayName: string
@@ -60,10 +67,12 @@ export default function PlannerPage() {
   const [data, setData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
+  const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
 
   useEffect(() => {
     if (session) {
       fetchPlan()
+      fetchPomodoroStats()
     }
   }, [session])
 
@@ -78,6 +87,21 @@ export default function PlannerPage() {
       console.error('Failed to fetch plan:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPomodoroStats = async () => {
+    try {
+      const response = await fetch('/api/pomodoro')
+      if (response.ok) {
+        const pomodoroData = await response.json()
+        setPomodoroStats({
+          totalMinutesThisWeek: pomodoroData.totalMinutesThisWeek || 0,
+          recentSessions: (pomodoroData.sessions || []).slice(0, 3)
+        })
+      }
+    } catch (err) {
+      console.error('Failed to fetch pomodoro stats:', err)
     }
   }
 
@@ -192,6 +216,37 @@ export default function PlannerPage() {
           </div>
         </div>
       )}
+
+      {/* Focus Timer Widget */}
+      <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg p-6 text-white shadow-md">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold">🍅 Focus Timer</h2>
+            <p className="text-sm opacity-90 mt-1">{pomodoroStats.totalMinutesThisWeek} hours focused this week</p>
+          </div>
+          <button
+            onClick={() => window.open('/timer', '_blank')}
+            className="px-4 py-2 bg-white text-orange-600 font-semibold rounded-lg hover:bg-gray-100 transition text-sm"
+          >
+            Start Focus Session
+          </button>
+        </div>
+        {pomodoroStats.recentSessions.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-white border-opacity-30">
+            <p className="text-xs opacity-75 mb-2">Last 3 sessions:</p>
+            <div className="space-y-1">
+              {pomodoroStats.recentSessions.map((session) => (
+                <div key={session.id} className="text-sm opacity-90 flex justify-between">
+                  <span>
+                    {session.subject || 'Study'} {session.topicName ? `· ${session.topicName}` : ''}
+                  </span>
+                  <span className="opacity-75">{session.totalMinutes} min</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Today's Sessions */}
       <div>

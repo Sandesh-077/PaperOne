@@ -96,6 +96,29 @@ export async function POST(req: Request) {
       console.log('TopicMastery table not available yet, skipping')
     }
 
+    // THING 1.5: Auto-update PaperTopic if exam mode with paperCode
+    let paperTopic: any = null
+    try {
+      if (data.paperCode && data.topic) {
+        const prismaAny = prisma as any
+        await prismaAny.paperTopic.updateMany({
+          where: {
+            userId: user.id,
+            paperCode: data.paperCode,
+            topicName: data.topic
+          },
+          data: {
+            sessionsLogged: { increment: 1 },
+            lastStudied: new Date(),
+            needsRevision: false,
+            updatedAt: new Date()
+          }
+        })
+      }
+    } catch (err) {
+      console.log('PaperTopic update skipped:', err)
+    }
+
     // THING 2: Auto-recalculate WeeklyPerformance after every session
     let weeklyPerformance: any = null
     try {

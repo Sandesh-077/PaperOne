@@ -78,6 +78,22 @@ export default function PlannerSetupPage() {
       })
 
       if (response.ok) {
+        // Seed topics for this paper (THING 2)
+        try {
+          await fetch('/api/paper-topics/seed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subject: formData.subject,
+              subjectName: formData.subjectName,
+              paperCode: formData.paperCode,
+              paperName: formData.paperName
+            })
+          })
+        } catch (seedErr) {
+          console.log('Topics seeding skipped:', seedErr)
+        }
+
         // Refresh exams list
         await fetchExams()
         // Reset form

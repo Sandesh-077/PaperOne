@@ -75,6 +75,7 @@ export default function SessionLogPage() {
     distractionCount: 0,
     notes: ''
   })
+  const [paperTopics, setPaperTopics] = useState<string[]>([])
 
   // Load user config and last used mode on mount
   useEffect(() => {
@@ -116,6 +117,25 @@ export default function SessionLogPage() {
     }
     loadInitialData()
   }, [session])
+
+  // Fetch topics for selected paper (THING 5)
+  const fetchPaperTopics = async (paperCode: string) => {
+    if (!paperCode) {
+      setPaperTopics([])
+      return
+    }
+    try {
+      const response = await fetch(`/api/paper-topics?paperCode=${encodeURIComponent(paperCode)}`)
+      if (response.ok) {
+        const data = await response.json()
+        const topicNames = (data.topics || []).map((t: any) => t.topicName).sort()
+        setPaperTopics(topicNames)
+      }
+    } catch (error) {
+      console.error('Failed to fetch paper topics:', error)
+      setPaperTopics([])
+    }
+  }
 
   const handleModeChange = (newMode: 'exam' | 'custom') => {
     setMode(newMode)
@@ -229,7 +249,9 @@ export default function SessionLogPage() {
 
       // Mode-specific fields
       if (mode === 'exam') {
-        payload.topic = formData.paperCode // For exam subject, topic = paper code
+        // For exam subject, use selected topic if available, otherwise use paperCode
+        payload.topic = formData.topic || formData.paperCode
+        payload.paperCode = formData.paperCode
         // Only require marks for Past Paper mode
         if (formData.taskType === 'Past Paper') {
           payload.totalMarks = formData.totalMarks ? parseInt(formData.totalMarks) : null
@@ -547,7 +569,10 @@ export default function SessionLogPage() {
                     <label className="block text-sm font-semibold mb-2">Paper *</label>
                     <select
                       value={formData.paperCode}
-                      onChange={(e) => setFormData({...formData, paperCode: e.target.value})}
+                      onChange={(e) => {
+                        setFormData({...formData, paperCode: e.target.value, topic: ''})
+                        fetchPaperTopics(e.target.value)
+                      }}
                       required
                       className="w-full border rounded px-3 py-2"
                     >
@@ -557,6 +582,26 @@ export default function SessionLogPage() {
                           {paper.paperName} ({paper.paperCode})
                         </option>
                       ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Topic Selection - Appears after paperCode is selected (THING 5) */}
+                {formData.paperCode && paperTopics.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-semibold mb-2">Topic (Optional)</label>
+                    <select
+                      value={formData.topic}
+                      onChange={(e) => setFormData({...formData, topic: e.target.value})}
+                      className="w-full border rounded px-3 py-2"
+                    >
+                      <option value="">General revision</option>
+                      {paperTopics.map((topicName) => (
+                        <option key={topicName} value={topicName}>
+                          {topicName}
+                        </option>
+                      ))}
+                      <option value="">Other</option>
                     </select>
                   </div>
                 )}
