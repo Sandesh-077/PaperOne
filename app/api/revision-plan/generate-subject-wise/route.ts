@@ -74,65 +74,136 @@ function buildSubjectWisePrompt(
 ): string {
   const totalDays = daysUntil(today, lastExamDate)
 
-  return `You are an elite A-Level exam strategist. Build a 40-day study plan targeting 95%+ scores.
+  return `You are an elite A-Level exam strategist building a 40-day comprehensive study plan.
 
 TODAY: ${today}
 FIRST EXAM: ${firstExamDate}
 LAST EXAM: ${lastExamDate}
 TOTAL DAYS: ${totalDays}
-STUDY HOURS/DAY: 4-6 hours
+GOAL: Target 95%+ scores across all papers
 
-ROTATION PATTERN:
-- Days 1, 3, 5, 7... (odd): Physics + Chemistry + Maths + Computer Science
-- Days 2, 4, 6, 8... (even): Physics + Chemistry + Maths + English GP
+DAILY ROTATION (STRICT)
+- ODD days (1,3,5,7...): Physics + Chemistry + Maths + ComputerScience
+- EVEN days (2,4,6,8...): Physics + Chemistry + Maths + EnglishGP
 
-PHASE BREAKDOWN (40 days):
-- Days 1-18: Foundation Phase (45%) - Topic revision, common-topic consolidation
-- Days 19-32: Blitz Phase (35%) - Topical past papers, weak-area targeting
-- Days 33-40: Exam Phase (20%) - Full past papers only
+40-DAY PHASE STRUCTURE:
+- Days 1-18 (FOUNDATION 45%): Deep chapter-by-chapter revision
+- Days 19-32 (BLITZ 35%): Topical past papers + weak-area drilling
+- Days 33-40 (EXAM 20%): Full mixed timed papers only
 
-SUBJECT FOCUS & TOPIC ALLOCATION RULES:
-1. Physics (9701): Can do 2-3 chapters per day (no single-topic constraint)
-2. Chemistry (9702): Organic Chemistry unit = 1 day only (high-marking). Other topics 2-3 per day
-3. Maths (9709): Integration & Differentiation = 1 each per day. Other topics 2 per day. Paper 3 (Pure), Paper 4 (Mechanics) alternate
-4. CS (9618): Follow paper-specific topics, 2-3 per day
-5. English GP (8021): Essay practice + revision of weak structures, 1 essay per session
-
-TOPICS FOR EACH SUBJECT:
+CAMBRIDGE SYLLABUS TOPICS FOR EACH SUBJECT:
 ${subjectDetails}
 
 EXAM SCHEDULE:
 ${examCountdown}
 
-ACTIVITY RULES:
-- Foundation Phase: Primarily 'revision' (topic-wise learning)
-- Blitz Phase: Mix of 'topical-past-paper' and 'revision' for weak areas
-- Exam Phase: Only 'full-paper' (mixed timed papers)
+CRITICAL RULES FOR TOPIC ALLOCATION:
+1. Physics (9701) - Cover these chapters: Circular Motion, Gravitation, Thermal Physics, Oscillations, Waves, Electric Fields, Magnetic Fields, Electromagnetic Induction, Nuclear Physics. Allocate 2-3 chapters per day.
+2. Chemistry (9702) - Organic Chemistry (1 day ONLY - high-marking), Inorganic Chemistry, Physical Chemistry. Spread remaining topics 2-3 per day.
+3. Maths (9709) - Paper 3 (Pure): Integration, Differentiation (1 each = 2 days), Vectors, Complex Numbers, Series. Paper 4 (Mechanics): Kinematics, Forces, Energy, Momentum. ALTERNATE papers daily. Each topic = 1 day if high-weight (Integration/Differentiation), else 2 topics per day.
+4. Computer Science (9618) - Programming, Algorithms, Data Structures, Networks, Security, Ethics. 2-3 topics per day.
+5. English GP (8021) - Essay techniques, argument structures, vocabulary development. 1 essay focus per day.
 
-OUTPUT REQUIREMENTS:
-Generate a JSON array of 40 day-objects with this EXACT structure:
+ACTIVITY TYPE RULES:
+- Foundation phase: 100% "revision" (learning chapters)
+- Blitz phase: 60% "topical-past-paper" + 40% "revision" 
+- Exam phase: 100% "full-paper" (timed, mixed)
+
+JSON OUTPUT FORMAT - Generate EXACTLY 40 day-objects with this structure:
 {
   "days": [
     {
       "dayNumber": 1,
-      "date": "YYYY-MM-DD",
-      "phase": "foundation|blitz|exam",
+      "date": "2026-03-19",
+      "phase": "foundation",
       "subjects": [
         {
-          "subject": "9701|9702|9709|9618|8021",
-          "subjectName": "Physics|Chemistry|Mathematics|Computer Science|English GP",
-          "paperCode": "9701/21", // optional, for specific paper focus
-          "topics": ["Chapter 1: Forces and Motion", "Chapter 2: Kinematics"],
-          "activity": "revision|topical-past-paper|full-paper",
-          "description": "Brief 1-line description of the task"
+          "subject": "9701",
+          "subjectName": "Physics",
+          "paperCode": "9701/21",
+          "topics": ["1.1 Circular Motion", "1.2 Centripetal Force"],
+          "activity": "revision",
+          "description": "Revise circular motion: definitions, equations, practical examples"
+        },
+        {
+          "subject": "9702",
+          "subjectName": "Chemistry",
+          "paperCode": "9702/21",
+          "topics": ["2.1 Basic Atomic Structure", "2.2 Bonding"],
+          "activity": "revision",
+          "description": "Revise atomic structure and chemical bonding types"
+        },
+        {
+          "subject": "9709",
+          "subjectName": "Mathematics",
+          "paperCode": "9709/71",
+          "topics": ["Paper 3: Differentiation from first principles"],
+          "activity": "revision",
+          "description": "Deep dive: differentiation basics, product rule, quotient rule"
+        },
+        {
+          "subject": "9618",
+          "subjectName": "Computer Science",
+          "paperCode": "9618/21",
+          "topics": ["3.1 Programming Fundamentals", "3.2 Data Types"],
+          "activity": "revision",
+          "description": "Revise core programming concepts and data structures"
+        }
+      ]
+    },
+    {
+      "dayNumber": 2,
+      "date": "2026-03-20",
+      "phase": "foundation",
+      "subjects": [
+        {
+          "subject": "9701",
+          "subjectName": "Physics",
+          "paperCode": "9701/22",
+          "topics": ["2.1 Gravitation", "2.2 Orbital Motion"],
+          "activity": "revision",
+          "description": "Revise Newton's law of gravitation, orbital mechanics, escape velocity"
+        },
+        {
+          "subject": "9702",
+          "subjectName": "Chemistry",
+          "paperCode": "9702/22",
+          "topics": ["3.1 Organic Chemistry Basics", "3.2 Alkanes"],
+          "activity": "revision",
+          "description": "Organic unit: basic reactions, naming conventions, alkane chemistry"
+        },
+        {
+          "subject": "9709",
+          "subjectName": "Mathematics",
+          "paperCode": "9709/72",
+          "topics": ["Paper 4: Kinematics equations", "Vectors basics"],
+          "activity": "revision",
+          "description": "Revise motion equations, displacement-time graphs, vector fundamentals"
+        },
+        {
+          "subject": "8021",
+          "subjectName": "English GP",
+          "paperCode": "8021/11",
+          "topics": ["Essay Structure", "Effective Arguments"],
+          "activity": "revision",
+          "description": "Practice essay writing: thesis clarity, paragraph development, transitions"
         }
       ]
     }
   ]
 }
 
-DO NOT include any text before or after the JSON array. Output ONLY valid JSON.`
+CRITICAL REMINDERS:
+- Generate EXACTLY 40 days
+- Alternate subjects on odd/even days STRICTLY
+- Each subject gets 1-4 sessions per day max
+- Topics must come FROM the syllabus provided
+- Descriptions must be specific and actionable
+- No repeated content between consecutive days for same subject
+
+Output ONLY the JSON. No preamble, no markdown, no explanations.`
 }
+
 
 async function buildSubjectWisePlan(
   today: string,
@@ -232,14 +303,69 @@ ${paperDetails}`
         }
       })
     } else {
-      // Fallback: minimal subjects
-      subjects = primaries.slice(0, 3).map((s) => ({
-        subject: s.subject,
-        subjectName: s.subjectName,
-        topics: ['General Revision'],
-        activity: 'revision' as const,
-        description: `${s.subjectName} - General revision`
-      }))
+      // Fallback: Generate rotation-based plan using actual topics
+      const allTopics: Record<string, string[]> = {}
+      const topicIndices: Record<string, number> = {}
+      
+      // Collect all topics per subject
+      for (const subj of [...primaries, ...secondaries]) {
+        allTopics[subj.subject] = []
+        topicIndices[subj.subject] = 0
+        for (const topics of Object.values(subj.paperTopics)) {
+          allTopics[subj.subject].push(...topics)
+        }
+      }
+
+      // Build fallback rotation
+      const isOddDay = index % 2 === 0 // index is 0-based, so 0,2,4 are "day 1,3,5"
+      const activePrimaries = primaries.slice(0, 3)
+      const activeSecondary = isOddDay ? secondaries.find(s => s.subject === '9618') : secondaries.find(s => s.subject === '8021')
+
+      subjects = []
+      
+      // Add primary subjects
+      for (const primary of activePrimaries) {
+        const topics = allTopics[primary.subject] || []
+        const startIdx = topicIndices[primary.subject] || 0
+        const topicsForDay = topics.slice(startIdx, startIdx + 2)
+        
+        if (topicsForDay.length === 0 && topics.length > 0) {
+          topicIndices[primary.subject] = 0
+          topicsForDay.push(...topics.slice(0, 2))
+        }
+        
+        topicIndices[primary.subject] = (startIdx + 2) % topics.length
+        
+        subjects.push({
+          subject: primary.subject,
+          subjectName: primary.subjectName,
+          topics: topicsForDay.length > 0 ? topicsForDay : ['General Revision'],
+          activity: (phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')) as 'revision' | 'topical-past-paper' | 'full-paper',
+          description: topicsForDay.length > 0 ? `Revise: ${topicsForDay.join(', ')}` : `${primary.subjectName} - General revision`
+        })
+      }
+      
+      // Add secondary subject
+      if (activeSecondary) {
+        const topics = allTopics[activeSecondary.subject] || []
+        const startIdx = topicIndices[activeSecondary.subject] || 0
+        const topicsForDay = topics.slice(startIdx, startIdx + 2)
+        
+        if (topicsForDay.length === 0 && topics.length > 0) {
+          topicIndices[activeSecondary.subject] = 0
+          topicsForDay.push(...topics.slice(0, 2))
+        }
+        
+        topicIndices[activeSecondary.subject] = (startIdx + 2) % topics.length
+        
+        subjects.push({
+          subject: activeSecondary.subject,
+          subjectName: activeSecondary.subjectName,
+          topics: topicsForDay.length > 0 ? topicsForDay : ['Practice & Review'],
+          activity: (phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')) as 'revision' | 'topical-past-paper' | 'full-paper',
+          description: topicsForDay.length > 0 ? `Revise: ${topicsForDay.join(', ')}` : `${activeSecondary.subjectName} - Practice & Review`
+        })
+      }
     }
 
     return {
@@ -252,40 +378,64 @@ ${paperDetails}`
     }
   })
 
-  // Ensure exactly 40 days
+  // Ensure exactly 40 days with intelligent topic cycling
+  // Build topic indices for cycling through actual database topics
+  const topicIndices: Record<string, number> = {}
+  const allTopicsNeeded: Record<string, string[]> = {}
+  
+  for (const subj of [...primaries, ...secondaries]) {
+    allTopicsNeeded[subj.subject] = []
+    for (const topics of Object.values(subj.paperTopics)) {
+      allTopicsNeeded[subj.subject].push(...topics)
+    }
+    topicIndices[subj.subject] = 0
+  }
+
   while (days.length < 40) {
+    const dayNum = days.length + 1
+    const phase = phaseForDay(dayNum - 1, 40)
+    const isOddDay = dayNum % 2 === 1
+
+    // Determine which subjects for this day
+    const subjectsForDay = isOddDay 
+      ? primaries.slice(0, 3)  // Physics, Chemistry, Maths
+      : [primaries[0], primaries[1], primaries[2], secondaries[0]]  // Physics, Chemistry, Maths, + Secondary
+
+    let date: string
     if (days.length === 0) {
-      // Initialize first day if no days exist
-      days.push({
-        date: toIsoDateString(today),
-        dayNumber: 1,
-        phase: 'foundation',
-        subjects: primaries.slice(0, 3).map((s) => ({
-          subject: s.subject,
-          subjectName: s.subjectName,
-          topics: ['General Revision'],
-          activity: 'revision' as const,
-          description: `${s.subjectName} - General revision`
-        }))
-      })
+      date = toIsoDateString(today)
+    } else {
+      const lastDay = days[days.length - 1]
+      const nextDate = new Date(`${lastDay.date}T00:00:00Z`)
+      nextDate.setUTCDate(nextDate.getUTCDate() + 1)
+      date = toIsoDateString(nextDate)
     }
 
-    const lastDay = days[days.length - 1]
-    const nextDate = new Date(`${lastDay.date}T00:00:00Z`)
-    nextDate.setUTCDate(nextDate.getUTCDate() + 1)
-    const dayNum = days.length + 1
+    const subjects = subjectsForDay.map((s) => {
+      const allTopics = allTopicsNeeded[s.subject] || []
+      const startIdx = topicIndices[s.subject]
+      const topicsForDay = allTopics.slice(startIdx, startIdx + 2)
+      topicIndices[s.subject] = (startIdx + 2) % (allTopics.length || 1)
 
-    days.push({
-      date: toIsoDateString(nextDate),
-      dayNumber: dayNum,
-      phase: phaseForDay(dayNum - 1, 40),
-      subjects: primaries.slice(0, 3).map((s) => ({
+      const activity: 'revision' | 'topical-past-paper' | 'full-paper' = 
+        phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')
+
+      return {
         subject: s.subject,
         subjectName: s.subjectName,
-        topics: ['Review'],
-        activity: 'revision' as const,
-        description: `${s.subjectName} - Final review`
-      }))
+        topics: topicsForDay.length > 0 ? topicsForDay : ['General Revision'],
+        activity,
+        description: topicsForDay.length > 0 
+          ? `${s.subjectName}: ${topicsForDay.join(', ')}`
+          : `${s.subjectName} - General revision`
+      }
+    })
+
+    days.push({
+      date,
+      dayNumber: dayNum,
+      phase,
+      subjects
     })
   }
 
