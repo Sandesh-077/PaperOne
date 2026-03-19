@@ -802,12 +802,18 @@ export async function POST(request: Request) {
     // Save daily tasks with detailed topic information
     for (const day of planData.days) {
       for (const subject of day.subjects) {
-        // Format topics with paperCode if available
+        // Format topics with enhanced metadata
         const topicsJson = subject.topics.map((t: any) => ({
           name: typeof t === 'string' ? t : t.name,
           paperCode: typeof t === 'string' ? '' : (t.paperCode || ''),
+          paperName: typeof t === 'string' ? '' : (t.paperName || ''), // e.g., "P1", "P2"
+          primaryPaperCode: typeof t === 'string' ? '' : (t.paperName || ''),
+          paperCodes: typeof t === 'string' ? [] : (t.allPaperCodes || []),
           completed: false,
-          completedAt: null
+          completedAt: null,
+          pastPaperStarted: false,
+          pastPaperCompletedCount: 0,
+          reRevisionDone: false
         }))
 
         await prisma.dailyTask.create({

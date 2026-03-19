@@ -537,13 +537,27 @@ export default function PlannerPage() {
                         key={`${day.date}-${subject.subject}`}
                         className={`rounded-lg p-4 border-l-4 ${SUBJECT_COLORS[subject.subject] || SUBJECT_COLORS.default}`}
                       >
+                        {/* Subjects for the Day */}
                         <div className="flex items-center justify-between mb-3">
-                          <h4 className="font-semibold text-gray-900">{subject.subjectName}</h4>
-                          <span className="text-xs font-medium bg-white px-2 py-1 rounded border border-gray-300">
+                          <div>
+                            <h4 className="font-semibold text-gray-900">{subject.subjectName}</h4>
+                            {(subject as any).paperCodes && (subject as any).paperCodes.length > 0 && (
+                              <p className="text-xs text-gray-600 mt-1">
+                                {(subject as any).paperCodes.join(', ')}
+                              </p>
+                            )}
+                          </div>
+                          <span className={`text-xs font-medium px-2 py-1 rounded whitespace-nowrap ${
+                            subject.activity === 'revision'
+                              ? 'bg-blue-100 text-blue-700'
+                              : subject.activity === 'topical-past-paper'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
                             {subject.activity === 'revision'
                               ? '📖 Revision'
                               : subject.activity === 'topical-past-paper'
-                              ? '📋 Topical Papers'
+                              ? '📋 Topical Past Papers'
                               : '📝 Full Paper'}
                           </span>
                         </div>
@@ -553,8 +567,10 @@ export default function PlannerPage() {
                           <div className="space-y-2">
                             {subject.topics.map((topic, tidx) => {
                               const topicName = typeof topic === 'string' ? topic : (topic as any)?.name || topic
-                              const paperCode = typeof topic === 'object' && (topic as any)?.paperCode ? ` (${(topic as any).paperCode})` : ''
+                              const paperName = typeof topic === 'object' ? (topic as any)?.paperName : ''
                               const isCompleted = typeof topic === 'object' ? (topic as any)?.completed || false : false
+                              const pastPaperStarted = typeof topic === 'object' ? (topic as any)?.pastPaperStarted || false : false
+                              const reRevisionDone = typeof topic === 'object' ? (topic as any)?.reRevisionDone || false : false
                               const isSyncing = topicUpdating === `${(subject as any).taskId}-${topicName}`
                               
                               return (
@@ -570,9 +586,22 @@ export default function PlannerPage() {
                                     disabled={isSyncing}
                                     className="mt-1 w-4 h-4 cursor-pointer flex-shrink-0 disabled:opacity-60"
                                   />
-                                  <span className={`text-sm py-1 ${isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                                    {topicName}{paperCode}
-                                  </span>
+                                  <div className="flex-1">
+                                    <span className={`text-sm py-1 block ${isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                                      {topicName}{paperName ? ` (${paperName})` : ''}
+                                    </span>
+                                    {/* Show past paper and re-revision status if topic is completed */}
+                                    {isCompleted && (
+                                      <div className="flex gap-2 mt-1">
+                                        {pastPaperStarted && (
+                                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">✓ Past Paper Started</span>
+                                        )}
+                                        {reRevisionDone && (
+                                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">✓ Re-Revised</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               )
                             })}
