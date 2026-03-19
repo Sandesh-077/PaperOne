@@ -104,7 +104,7 @@ export default function PlannerPage() {
   const { data: session } = useSession()
   const [data, setData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
+  const [topicUpdating, setTopicUpdating] = useState<string | null>(null)
   const [activatingExamMode, setActivatingExamMode] = useState(false)
   const [regeneratingPlan, setRegeneratingPlan] = useState(false)
   const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
@@ -125,6 +125,30 @@ export default function PlannerPage() {
       if (response.ok) {
         const subjectWiseData = await response.json()
         if (subjectWiseData.success && subjectWiseData.plan) {
+          // Get all tasks (using a special flag to bypass date filter)
+          const tasksResponse = await fetch('/api/daily-tasks?allTasks=true')
+          const tasksData = tasksResponse.ok ? await tasksResponse.json() : { tasks: [] }
+          const tasksMap = new Map()
+          
+          // Create a map of day-subject pairs to taskIds
+          for (const task of tasksData.tasks || []) {
+            const taskDate = new Date(task.date).toISOString().split('T')[0]
+            const key = `${taskDate}-${task.subject}`
+            tasksMap.set(key, task.id)
+          }
+
+          // Enhance plan data with taskIds
+          const enhancedPlan = {
+            ...subjectWiseData.plan,
+            days: subjectWiseData.plan.days.map((day: any) => ({
+              ...day,
+              subjects: day.subjects.map((subject: any) => ({
+                ...subject,
+                taskId: tasksMap.get(`${day.date}-${subject.subject}`)
+              }))
+            }))
+          }
+
           setData({
             plan: {
               id: '1',
@@ -133,7 +157,7 @@ export default function PlannerPage() {
               lastExamDate: subjectWiseData.lastExamDate,
               studyHoursPerDay: 5
             },
-            planData: subjectWiseData.plan,
+            planData: enhancedPlan,
             stats: null,
             nextExams: [],
             todayTasks: undefined,
@@ -173,7 +197,7 @@ export default function PlannerPage() {
   }
 
   const handleToggleTask = async (taskId: string, currentCompleted: boolean) => {
-    setUpdatingTaskId(taskId)
+    setTopicUpdating(taskId)
     try {
       const response = await fetch(`/api/daily-tasks/${taskId}/complete`, {
         method: 'PATCH',
@@ -187,7 +211,26 @@ export default function PlannerPage() {
     } catch (err) {
       console.error('Failed to update task:', err)
     } finally {
-      setUpdatingTaskId(null)
+      setTopicUpdating(null)
+    }
+  }
+
+  const handleToggleTopic = async (taskId: string, topicName: string, currentCompleted: boolean) => {
+    setTopicUpdating(`${taskId}-${topicName}`)
+    try {
+      const response = await fetch(`/api/daily-tasks/${taskId}/topic-complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicName, completed: !currentCompleted })
+      })
+      if (response.ok) {
+        // Refresh plan data
+        await fetchPlan()
+      }
+    } catch (err) {
+      console.error('Failed to update topic:', err)
+    } finally {
+      setTopicUpdating(null)
     }
   }
 
@@ -477,14 +520,23 @@ export default function PlannerPage() {
                             {subject.topics.map((topic, tidx) => {
                               const topicName = typeof topic === 'string' ? topic : (topic as any)?.name || topic
                               const paperCode = typeof topic === 'object' && (topic as any)?.paperCode ? ` (${(topic as any).paperCode})` : ''
+                              const isCompleted = typeof topic === 'object' ? (topic as any)?.completed || false : false
+                              const isSyncing = topicUpdating === `${(subject as any).taskId}-${topicName}`
+                              
                               return (
                                 <div key={tidx} className="flex items-start gap-3">
                                   <input
                                     type="checkbox"
-                                    className="mt-1 w-4 h-4 cursor-pointer flex-shrink-0"
-                                    defaultChecked={(topic as any)?.completed || false}
+                                    checked={isCompleted}
+                                    onChange={() => {
+                                      if ((subject as any).taskId) {
+                                        handleToggleTopic((subject as any).taskId, topicName, isCompleted)
+                                      }
+                                    }}
+                                    disabled={isSyncing}
+                                    className="mt-1 w-4 h-4 cursor-pointer flex-shrink-0 disabled:opacity-60"
                                   />
-                                  <span className="text-sm text-gray-700 py-1">
+                                  <span className={`text-sm py-1 ${isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
                                     {topicName}{paperCode}
                                   </span>
                                 </div>

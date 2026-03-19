@@ -13,11 +13,23 @@ export async function GET(req: Request) {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    // Get optional date query param
+    // Get optional query params
     const { searchParams } = new URL(req.url)
     const dateParam = searchParams.get('date')
+    const allTasksParam = searchParams.get('allTasks')
 
-    // Determine target date (provided date or today)
+    const prismaAny = prisma as any
+    
+    // If allTasks is requested, return all tasks for the user
+    if (allTasksParam === 'true') {
+      const tasks = await prismaAny.dailyTask.findMany({
+        where: { userId: user.id },
+        orderBy: { date: 'asc' }
+      })
+      return NextResponse.json({ tasks })
+    }
+
+    // Otherwise, return tasks for a specific date (default: today)
     let targetDate = new Date()
     if (dateParam) {
       targetDate = new Date(`${dateParam}T00:00:00Z`)
@@ -31,7 +43,6 @@ export async function GET(req: Request) {
     const dateEnd = new Date(targetDate)
     dateEnd.setUTCHours(23, 59, 59, 999)
 
-    const prismaAny = prisma as any
     const tasks = await prismaAny.dailyTask.findMany({
       where: {
         userId: user.id,
