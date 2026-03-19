@@ -356,7 +356,7 @@ export async function POST(request: Request) {
         paperCode: entry.paperCode,
         paperName: entry.paperName,
         examDate: toIsoDateString(entry.examDate),
-        timeSlot: entry.timeSlot
+        timeSlot: entry.timeSlot as 'AM' | 'PM'
       })
     }
 
