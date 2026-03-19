@@ -7,6 +7,24 @@ export const dynamic = 'force-dynamic'
 
 // Topic lists for each exam paper
 const TOPIC_MAPS: Record<string, string[]> = {
+  '8021/12': [
+    'Essay structure and argument development',
+    'Thesis clarity and scope control',
+    'Paragraph cohesion and transitions',
+    'Use of examples and evidence',
+    'Counterargument and rebuttal',
+    'Tone, register and precision',
+    'Time management for full essay'
+  ],
+  '8021/22': [
+    'Comprehension strategy and annotation',
+    'Summary writing and paraphrasing',
+    'Inference and implied meaning',
+    'Author tone, attitude and purpose',
+    'Vocabulary in context',
+    'Grammar and language correction',
+    'Accuracy under timed conditions'
+  ],
   '9701/42': [
     'Atomic structure and the periodic table',
     'Bonding, structure and properties of matter',
@@ -34,6 +52,60 @@ const TOPIC_MAPS: Record<string, string[]> = {
     'The periodic table',
     'Group 2 and halogens'
   ],
+  '9701/31': [
+    'Practical techniques and apparatus use',
+    'Planning investigations and variables',
+    'Data collection and table formatting',
+    'Graph plotting and interpretation',
+    'Error analysis and uncertainty',
+    'Qualitative analysis and observations',
+    'Safety and evaluation of method'
+  ],
+  '9701/32': [
+    'Practical techniques and apparatus use',
+    'Planning investigations and variables',
+    'Data collection and table formatting',
+    'Graph plotting and interpretation',
+    'Error analysis and uncertainty',
+    'Qualitative analysis and observations',
+    'Safety and evaluation of method'
+  ],
+  '9701/33': [
+    'Practical techniques and apparatus use',
+    'Planning investigations and variables',
+    'Data collection and table formatting',
+    'Graph plotting and interpretation',
+    'Error analysis and uncertainty',
+    'Qualitative analysis and observations',
+    'Safety and evaluation of method'
+  ],
+  '9701/51': [
+    'Data analysis from experimental results',
+    'Selecting and processing equations',
+    'Calculation accuracy and significant figures',
+    'Planning and improving procedures',
+    'Evaluating reliability and anomalies',
+    'Interpreting trends and conclusions',
+    'Linking practical evidence to theory'
+  ],
+  '9701/52': [
+    'Data analysis from experimental results',
+    'Selecting and processing equations',
+    'Calculation accuracy and significant figures',
+    'Planning and improving procedures',
+    'Evaluating reliability and anomalies',
+    'Interpreting trends and conclusions',
+    'Linking practical evidence to theory'
+  ],
+  '9701/53': [
+    'Data analysis from experimental results',
+    'Selecting and processing equations',
+    'Calculation accuracy and significant figures',
+    'Planning and improving procedures',
+    'Evaluating reliability and anomalies',
+    'Interpreting trends and conclusions',
+    'Linking practical evidence to theory'
+  ],
   '9702/42': [
     'Physical quantities and units',
     'Kinematics',
@@ -60,6 +132,60 @@ const TOPIC_MAPS: Record<string, string[]> = {
     'Electric fields and potential',
     'Current and circuits',
     'Nuclear physics'
+  ],
+  '9702/31': [
+    'Practical skills and measurement technique',
+    'Designing practical procedures',
+    'Controlling variables and fair tests',
+    'Graphing and gradient/area extraction',
+    'Uncertainty and error propagation',
+    'Data interpretation in context',
+    'Method evaluation and improvements'
+  ],
+  '9702/32': [
+    'Practical skills and measurement technique',
+    'Designing practical procedures',
+    'Controlling variables and fair tests',
+    'Graphing and gradient/area extraction',
+    'Uncertainty and error propagation',
+    'Data interpretation in context',
+    'Method evaluation and improvements'
+  ],
+  '9702/33': [
+    'Practical skills and measurement technique',
+    'Designing practical procedures',
+    'Controlling variables and fair tests',
+    'Graphing and gradient/area extraction',
+    'Uncertainty and error propagation',
+    'Data interpretation in context',
+    'Method evaluation and improvements'
+  ],
+  '9702/51': [
+    'Analysis of given experimental data',
+    'Algebraic manipulation of physics formulae',
+    'Units, dimensions and consistency checks',
+    'Planning investigations and apparatus choices',
+    'Error/uncertainty and percentage uncertainty',
+    'Evaluating conclusions from data',
+    'Improving method and reliability'
+  ],
+  '9702/52': [
+    'Analysis of given experimental data',
+    'Algebraic manipulation of physics formulae',
+    'Units, dimensions and consistency checks',
+    'Planning investigations and apparatus choices',
+    'Error/uncertainty and percentage uncertainty',
+    'Evaluating conclusions from data',
+    'Improving method and reliability'
+  ],
+  '9702/53': [
+    'Analysis of given experimental data',
+    'Algebraic manipulation of physics formulae',
+    'Units, dimensions and consistency checks',
+    'Planning investigations and apparatus choices',
+    'Error/uncertainty and percentage uncertainty',
+    'Evaluating conclusions from data',
+    'Improving method and reliability'
   ],
   '9703/42': [
     'Bonding and structure',
