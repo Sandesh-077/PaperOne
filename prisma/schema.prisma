@@ -422,10 +422,16 @@ model DailyTask {
   plan   RevisionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   date        DateTime // Task date
-  sessionSlot String // e.g., "Morning", "Afternoon", "Evening"
+  sessionSlot String // e.g., "Morning", "Afternoon", "Evening", "subject-wise"
   subject     String // Subject code
   subjectName String // Display name
-  topicName   String? // which topic this task covers
+  topicName   String? // Single topic for backward compatibility
+  
+  // NEW: Subject-wise detailed tracking
+  topics           Json? // Array of { name, paperCode? } for fine-grained tracking
+  completedTopics  Json? // Array of completed topic names
+  activity         String? // "revision" | "topical-past-paper" | "full-paper"
+  dayNumber        Int? // Which day of the 40-day plan
 
   taskDesc String @db.Text // Task description
   taskType String // "Revision" | "PastPaper" | "TopicalReview" | "Practice"

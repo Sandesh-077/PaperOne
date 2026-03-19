@@ -61,13 +61,21 @@ export interface RevisionPhase {
 }
 
 /**
+ * Single topic in a subject session with paper reference
+ */
+export interface TopicWithPaper {
+  name: string;
+  paperCode?: string; // e.g., "21" if from paper 9702/21
+}
+
+/**
  * Subject-wise session within a day
  */
 export interface SubjectSessionInDay {
   subject: string; // Subject code: 9701, 9702, 9709, 9618, 8021
   subjectName: string;
   paperCode?: string; // e.g., 9702/21 for specific paper
-  topics: string[]; // Chapter/topic names from syllabus
+  topics: (string | TopicWithPaper)[]; // Chapter/topic names, optionally with paper code
   activity: 'revision' | 'topical-past-paper' | 'full-paper';
   focusWeakAreas?: boolean;
   description?: string;

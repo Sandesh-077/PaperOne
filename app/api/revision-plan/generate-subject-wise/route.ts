@@ -303,67 +303,106 @@ ${paperDetails}`
         }
       })
     } else {
-      // Fallback: Generate rotation-based plan using actual topics
-      const allTopics: Record<string, string[]> = {}
+      // Fallback: Generate rotation-based plan using actual topics with paper references
+      // Build topic pool per subject with paper code association
+      type TopicWithPaper = { name: string; paperCode: string; paperName: string }
+      const topicPool: Record<string, TopicWithPaper[]> = {}
       const topicIndices: Record<string, number> = {}
       
-      // Collect all topics per subject
       for (const subj of [...primaries, ...secondaries]) {
-        allTopics[subj.subject] = []
+        topicPool[subj.subject] = []
         topicIndices[subj.subject] = 0
-        for (const topics of Object.values(subj.paperTopics)) {
-          allTopics[subj.subject].push(...topics)
+        
+        // Build list with paper association
+        for (const [paperCode, topics] of Object.entries(subj.paperTopics)) {
+          const paper = subj.papers.find(p => p.paperCode === paperCode)
+          for (const topicName of topics) {
+            topicPool[subj.subject].push({
+              name: topicName,
+              paperCode: paperCode,
+              paperName: paper?.paperName || `Paper ${paperCode}`
+            })
+          }
         }
       }
 
-      // Build fallback rotation
-      const isOddDay = index % 2 === 0 // index is 0-based, so 0,2,4 are "day 1,3,5"
+      // Build fallback rotation with smart distribution per paper
+      const isOddDay = index % 2 === 0
       const activePrimaries = primaries.slice(0, 3)
       const activeSecondary = isOddDay ? secondaries.find(s => s.subject === '9618') : secondaries.find(s => s.subject === '8021')
 
       subjects = []
       
-      // Add primary subjects
+      // Add primary subjects with smart allocation
       for (const primary of activePrimaries) {
-        const topics = allTopics[primary.subject] || []
+        const allTopicsForSubj = topicPool[primary.subject] || []
         const startIdx = topicIndices[primary.subject] || 0
-        const topicsForDay = topics.slice(startIdx, startIdx + 2)
         
-        if (topicsForDay.length === 0 && topics.length > 0) {
-          topicIndices[primary.subject] = 0
-          topicsForDay.push(...topics.slice(0, 2))
+        // Smart allocation: Don't overload small papers
+        let topicsForDay: TopicWithPaper[] = []
+        let endIdx = startIdx + 2
+        
+        // Check if we're in a paper with few topics (like Mechanics P4 with 4 total)
+        if (allTopicsForSubj.length > 0 && allTopicsForSubj.length <= 5) {
+          // For small papers, take 1 topic at a time
+          endIdx = startIdx + 1
+          topicsForDay = allTopicsForSubj.slice(startIdx, endIdx)
+        } else if (allTopicsForSubj.length > 0) {
+          // For larger papers, take 2 topics
+          topicsForDay = allTopicsForSubj.slice(startIdx, endIdx)
+          
+          // Wrap around if needed
+          if (topicsForDay.length < 2 && allTopicsForSubj.length > 0) {
+            topicsForDay = allTopicsForSubj.slice(0, Math.min(allTopicsForSubj.length, 2))
+          }
         }
         
-        topicIndices[primary.subject] = (startIdx + 2) % topics.length
+        topicIndices[primary.subject] = endIdx % Math.max(allTopicsForSubj.length, 1)
+        
+        // Format topics with paper reference
+        const displayTopics = topicsForDay.map(t => {
+          const paperNum = t.paperCode.split('/')[1] || t.paperCode
+          return `${t.name} (P${paperNum})`
+        })
         
         subjects.push({
           subject: primary.subject,
           subjectName: primary.subjectName,
-          topics: topicsForDay.length > 0 ? topicsForDay : ['General Revision'],
+          topics: displayTopics.length > 0 ? displayTopics : ['General Revision'],
           activity: (phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')) as 'revision' | 'topical-past-paper' | 'full-paper',
-          description: topicsForDay.length > 0 ? `Revise: ${topicsForDay.join(', ')}` : `${primary.subjectName} - General revision`
+          description: displayTopics.length > 0 ? `Revise: ${displayTopics.join(', ')}` : `${primary.subjectName} - General revision`
         })
       }
       
-      // Add secondary subject
+      // Add secondary subject with same smart logic
       if (activeSecondary) {
-        const topics = allTopics[activeSecondary.subject] || []
+        const allTopicsForSubj = topicPool[activeSecondary.subject] || []
         const startIdx = topicIndices[activeSecondary.subject] || 0
-        const topicsForDay = topics.slice(startIdx, startIdx + 2)
         
-        if (topicsForDay.length === 0 && topics.length > 0) {
-          topicIndices[activeSecondary.subject] = 0
-          topicsForDay.push(...topics.slice(0, 2))
+        let topicsForDay: TopicWithPaper[] = []
+        let endIdx = startIdx + 1 // Secondary subjects usually fewer topics
+        
+        if (allTopicsForSubj.length > 0) {
+          topicsForDay = allTopicsForSubj.slice(startIdx, endIdx)
+          if (topicsForDay.length === 0 && allTopicsForSubj.length > 0) {
+            topicsForDay = allTopicsForSubj.slice(0, 1)
+          }
         }
         
-        topicIndices[activeSecondary.subject] = (startIdx + 2) % topics.length
+        topicIndices[activeSecondary.subject] = endIdx % Math.max(allTopicsForSubj.length, 1)
+        
+        // Format topics with paper reference
+        const displayTopics = topicsForDay.map(t => {
+          const paperNum = t.paperCode.split('/')[1] || t.paperCode
+          return `${t.name} (P${paperNum})`
+        })
         
         subjects.push({
           subject: activeSecondary.subject,
           subjectName: activeSecondary.subjectName,
-          topics: topicsForDay.length > 0 ? topicsForDay : ['Practice & Review'],
+          topics: displayTopics.length > 0 ? displayTopics : ['Review & Practice'],
           activity: (phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')) as 'revision' | 'topical-past-paper' | 'full-paper',
-          description: topicsForDay.length > 0 ? `Revise: ${topicsForDay.join(', ')}` : `${activeSecondary.subjectName} - Practice & Review`
+          description: displayTopics.length > 0 ? `Revise: ${displayTopics.join(', ')}` : `${activeSecondary.subjectName} - Review & Practice`
         })
       }
     }
