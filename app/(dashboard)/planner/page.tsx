@@ -74,6 +74,7 @@ export default function PlannerPage() {
   const [loading, setLoading] = useState(true)
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
   const [activatingExamMode, setActivatingExamMode] = useState(false)
+  const [regeneratingPlan, setRegeneratingPlan] = useState(false)
   const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
 
   useEffect(() => {
@@ -157,6 +158,30 @@ export default function PlannerPage() {
     }
   }
 
+  const handleRegeneratePlan = async () => {
+    setRegeneratingPlan(true)
+    try {
+      const response = await fetch('/api/revision-plan/generate-subject-wise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        alert(err?.error || 'Failed to regenerate plan')
+        return
+      }
+
+      const result = await response.json()
+      alert('✓ Subject-wise plan generated successfully!')
+      await fetchPlan()
+    } catch (err) {
+      console.error('Failed to regenerate plan:', err)
+      alert('Failed to regenerate plan')
+    } finally {
+      setRegeneratingPlan(false)
+    }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -228,6 +253,17 @@ export default function PlannerPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Daily Planner</h1>
         <p className="text-gray-600 mt-1">Your personalized study schedule</p>
+      </div>
+
+      {/* Regenerate Plan Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleRegeneratePlan}
+          disabled={regeneratingPlan}
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium rounded-lg transition text-sm"
+        >
+          {regeneratingPlan ? 'Regenerating...' : '🔄 Regenerate Subject-Wise Plan'}
+        </button>
       </div>
 
       {data.examMode?.ready && !data.examMode?.active && (

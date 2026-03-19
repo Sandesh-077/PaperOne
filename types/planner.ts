@@ -61,11 +61,45 @@ export interface RevisionPhase {
 }
 
 /**
+ * Subject-wise session within a day
+ */
+export interface SubjectSessionInDay {
+  subject: string; // Subject code: 9701, 9702, 9709, 9618, 8021
+  subjectName: string;
+  paperCode?: string; // e.g., 9702/21 for specific paper
+  topics: string[]; // Chapter/topic names from syllabus
+  activity: 'revision' | 'topical-past-paper' | 'full-paper';
+  focusWeakAreas?: boolean;
+  description?: string;
+}
+
+/**
+ * One day in subject-wise revision plan
+ */
+export interface SubjectWisePlanDay {
+  date: string; // YYYY-MM-DD format
+  dayNumber: number;
+  phase: 'foundation' | 'blitz' | 'exam';
+  isExamDay?: boolean;
+  examEntries?: Array<{ subject: string; subjectName: string; paperCode: string; timeSlot: string }>;
+  subjects: SubjectSessionInDay[];
+}
+
+/**
  * Complete AI-generated revision plan data
  */
 export interface RevisionPlanData {
   phases: RevisionPhase[];
   days: PlanDay[];
+}
+
+/**
+ * Subject-wise revision plan (new format)
+ */
+export interface SubjectWiseRevisionData {
+  phases: RevisionPhase[];
+  days: SubjectWisePlanDay[];
+  formatVersion: 'subject-wise';
 }
 
 /**
