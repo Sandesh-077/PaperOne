@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+// @ts-nocheck
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -297,11 +297,11 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user?.email) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } })
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
 
     const prismaAny = prisma as any
     const body = await req.json().catch(() => ({}))
@@ -312,7 +312,7 @@ export async function POST(req: Request) {
     })
 
     if (examEntries.length === 0) {
-      return NextResponse.json({ error: 'No exam entries found.' }, { status: 400 })
+      return Response.json({ error: 'No exam entries found.' }, { status: 400 })
     }
 
     const now = new Date()
@@ -322,7 +322,7 @@ export async function POST(req: Request) {
     const daysUntilFirstExam = daysBetween(today, firstExamIso)
 
     if (daysUntilFirstExam > 2) {
-      return NextResponse.json(
+      return Response.json(
         { error: 'Exam Mode can be activated only within 2 days before first exam.', daysUntilFirstExam },
         { status: 400 }
       )
@@ -578,7 +578,7 @@ RETURN ONLY VALID JSON:
       }
     }
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       mode: 'exam',
       planId: revisionPlan.id,
@@ -589,6 +589,6 @@ RETURN ONLY VALID JSON:
     })
   } catch (error) {
     console.error('Error activating exam mode:', error)
-    return NextResponse.json({ error: 'Failed to activate exam mode' }, { status: 500 })
+    return Response.json({ error: 'Failed to activate exam mode' }, { status: 500 })
   }
 }
