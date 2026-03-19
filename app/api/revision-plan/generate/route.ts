@@ -211,7 +211,7 @@ function normalizeOrBuildPlan(
     const examsToday = examsByDate.get(dateIso) || []
     const isExamDay = examsToday.length > 0
 
-    const sessions = ['morning', 'afternoon', 'evening'].map((slot, slotIndex) => {
+    const sessions = (['morning', 'afternoon', 'evening'] as const).map((slot, slotIndex) => {
       if (isExamDay && slot === 'morning') {
         const exam = examsToday[0]
         return {
