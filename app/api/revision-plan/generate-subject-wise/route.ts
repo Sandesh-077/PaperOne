@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -188,7 +187,7 @@ ${paperDetails}`
   // Call Groq
   let aiPlanRaw: any
   try {
-    const groqResponse = await callGroq(prompt, 'json_object')
+    const groqResponse = await callGroq(prompt)
     aiPlanRaw = parseJsonResponse(groqResponse)
   } catch (error) {
     console.error('Groq API error:', error)
@@ -309,14 +308,14 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const user = await prisma.user.findUnique({
       where: { email: session.user.email }
     })
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return Response.json({ error: 'User not found' }, { status: 404 })
     }
 
     // Fetch exam entries
@@ -325,7 +324,7 @@ export async function POST(request: Request) {
       orderBy: { examDate: 'asc' }
     })
     if (examEntries.length === 0) {
-      return NextResponse.json({ error: 'No exam entries found' }, { status: 400 })
+      return Response.json({ error: 'No exam entries found' }, { status: 400 })
     }
 
     const today = toIsoDateString(new Date())
@@ -390,7 +389,7 @@ export async function POST(request: Request) {
     const secondaries = runtimeSubjects.filter((s) => SECONDARY_SUBJECTS.includes(s.subject))
 
     if (primaries.length === 0) {
-      return NextResponse.json({ error: 'Missing primary subjects (Physics, Chemistry, Maths)' }, { status: 400 })
+      return Response.json({ error: 'Missing primary subjects (Physics, Chemistry, Maths)' }, { status: 400 })
     }
 
     // Build exam-by-date map
@@ -451,7 +450,7 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({
+    return Response.json({
       success: true,
       planId: savedPlan.id,
       plan: planData,
@@ -459,6 +458,6 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error('Error generating subject-wise plan:', error)
-    return NextResponse.json({ error: error.message || 'Plan generation failed' }, { status: 500 })
+    return Response.json({ error: error.message || 'Plan generation failed' }, { status: 500 })
   }
 }
