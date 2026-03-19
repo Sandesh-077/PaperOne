@@ -347,8 +347,8 @@ export async function POST(request: Request) {
           subject: entry.subject,
           subjectName: entry.subjectName || SUBJECT_CODE_MAP[entry.subject] || entry.subject,
           papers: [],
-          previousScore: entry.previousScore,
-          targetScore: entry.targetScore
+          previousScore: entry.previousScore ?? undefined,
+          targetScore: entry.targetScore ?? undefined
         })
       }
 
