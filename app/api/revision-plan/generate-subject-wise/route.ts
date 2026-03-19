@@ -218,16 +218,20 @@ ${paperDetails}`
       subjects = examSubjects
     } else if (Array.isArray(day.subjects) && day.subjects.length > 0) {
       // Use AI-generated subjects, ensure valid activity type
-      subjects = day.subjects.map((s: any) => ({
-        subject: s.subject,
-        subjectName: s.subjectName || SUBJECT_CODE_MAP[s.subject] || s.subject,
-        paperCode: s.paperCode,
-        topics: Array.isArray(s.topics) ? s.topics : [],
-        activity: ['revision', 'topical-past-paper', 'full-paper'].includes(s.activity)
-          ? s.activity
-          : 'revision',
-        description: s.description || `${s.subjectName} - ${s.activity}`
-      }))
+      subjects = day.subjects.map((s: any) => {
+        const validActivities = ['revision', 'topical-past-paper', 'full-paper']
+        const activity = validActivities.includes(s.activity)
+          ? (s.activity as 'revision' | 'topical-past-paper' | 'full-paper')
+          : ('revision' as const)
+        return {
+          subject: s.subject,
+          subjectName: s.subjectName || SUBJECT_CODE_MAP[s.subject] || s.subject,
+          paperCode: s.paperCode,
+          topics: Array.isArray(s.topics) ? s.topics : [],
+          activity,
+          description: s.description || `${s.subjectName} - ${activity}`
+        }
+      })
     } else {
       // Fallback: minimal subjects
       subjects = primaries.slice(0, 3).map((s) => ({
