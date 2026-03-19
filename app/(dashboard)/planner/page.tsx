@@ -107,6 +107,7 @@ export default function PlannerPage() {
   const [topicUpdating, setTopicUpdating] = useState<string | null>(null)
   const [activatingExamMode, setActivatingExamMode] = useState(false)
   const [regeneratingPlan, setRegeneratingPlan] = useState(false)
+  const [generatingRecovery, setGeneratingRecovery] = useState(false)
   const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
 
   useEffect(() => {
@@ -285,6 +286,31 @@ export default function PlannerPage() {
     }
   }
 
+  const handleGenerateRecoveryPlan = async () => {
+    setGeneratingRecovery(true)
+    try {
+      const response = await fetch('/api/revision-plan/generate-recovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        alert(err?.error || 'Failed to generate recovery plan')
+        return
+      }
+
+      const result = await response.json()
+      alert(`✓ Recovery plan generated!\n${result.message}`)
+      await fetchPlan()
+    } catch (err) {
+      console.error('Failed to generate recovery plan:', err)
+      alert('Failed to generate recovery plan')
+    } finally {
+      setGeneratingRecovery(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -359,7 +385,15 @@ export default function PlannerPage() {
       </div>
 
       {/* Regenerate Plan Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={handleGenerateRecoveryPlan}
+          disabled={generatingRecovery}
+          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-medium rounded-lg transition text-sm"
+          title="Generate a recovery plan if you've missed topics"
+        >
+          {generatingRecovery ? 'Generating...' : '🎯 Generate Recovery Plan'}
+        </button>
         <button
           onClick={handleRegeneratePlan}
           disabled={regeneratingPlan}
