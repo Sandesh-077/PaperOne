@@ -106,9 +106,31 @@ function buildFallbackTask(
   paper: { paperCode: string; paperName: string; examDate: string; timeSlot: 'AM' | 'PM' }
 ): { task: string; type: 'revision' | 'pastpaper' | 'practice' | 'rest' } {
   const paperTopics = subject.paperTopics[paper.paperCode] || []
+  const hasNoTopics = paperTopics.length === 0
   const topicPool = paperTopics.length > 0 ? paperTopics : subject.commonTopics
   const chosenTopic = topicPool.length > 0 ? topicPool[(slotIndex + dateIso.length) % topicPool.length] : null
   const examInDays = daysUntil(dateIso, paper.examDate)
+
+  if (hasNoTopics) {
+    if (phase === 'foundation') {
+      return {
+        task: `Revision for this paper: ${subject.subjectName} ${paper.paperCode} (${paper.paperName}).`,
+        type: 'revision'
+      }
+    }
+
+    if (phase === 'blitz') {
+      return {
+        task: `Do 1 timed paper: ${subject.subjectName} ${paper.paperCode} (${paper.paperName}), then mark and review mistakes.`,
+        type: 'pastpaper'
+      }
+    }
+
+    return {
+      task: `Practice for this paper: ${subject.subjectName} ${paper.paperCode} (${paper.paperName}) and fix weak areas.`,
+      type: 'practice'
+    }
+  }
 
   if (phase === 'foundation') {
     if (subject.commonTopics.length > 0 && slotIndex === 0) {
@@ -159,7 +181,10 @@ function normalizeOrBuildPlan(
   runtimeSubjects: RuntimeSubject[],
   examsByDate: Map<string, Array<{ subject: string; subjectName: string; paperCode: string; paperName: string; timeSlot: 'AM' | 'PM' }>>
 ): RevisionPlanData {
-  const dateRange = enumerateDates(todayIso, lastExamDateIso)
+  let dateRange = enumerateDates(todayIso, lastExamDateIso)
+  if (dateRange.length === 0) {
+    dateRange = [todayIso]
+  }
 
   const aiDayMap = new Map<string, any>()
   if (rawPlanData?.days && Array.isArray(rawPlanData.days)) {
@@ -494,7 +519,10 @@ INSTRUCTIONS:
 9. Tasks must be SPECIFIC and ACTIONABLE with measurable output (timed duration, mark + correction, error-log update)
 10. Include EVERY day from ${today} to ${lastExamDate}
 11. Use provided topic lists when available and prioritize [FOCUS] topics first in Foundation and Exam phases
-12. If a paper has NO_TOPICS_ADDED, still generate specific paper-focused tasks (not generic) using paperCode/paperName and exam demands.
+12. If a paper has NO_TOPICS_ADDED, use ONLY simple paper-level tasks and do not invent topic names. Use wording like:
+  - "Revision for this paper: [subject] [paperCode]"
+  - "Do 1 timed paper: [subject] [paperCode]"
+  - "Practice for this paper: [subject] [paperCode]"
 13. Subject code determines subject identity exactly as:
    - 8021 = English General Paper
    - 9702 = Chemistry
