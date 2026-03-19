@@ -61,13 +61,18 @@ export interface RevisionPhase {
 }
 
 /**
- * Single topic in a subject session with paper reference and completion tracking
+ * Single topic in a subject session with paper reference and detailed tracking
  */
 export interface TopicWithPaper {
   name: string;
-  paperCode?: string; // e.g., "P4" or "21" if from specific paper
+  paperCodes?: string[]; // e.g., ["P1", "P2"] if topic appears in multiple papers
+  primaryPaperCode?: string; // Main paper for this topic
   completed?: boolean;
   completedAt?: string;
+  pastPaperStarted?: boolean; // Whether at least 1 past paper for this topic was done
+  pastPaperCompletedCount?: number; // How many times past paper was completed (0+)
+  reRevisionDone?: boolean; // Whether re-revision after completion was done
+  lastUpdatedAt?: string;
 }
 
 /**
@@ -80,16 +85,30 @@ export interface DayTopicProgress {
 }
 
 /**
+ * Activity session details including paper info
+ */
+export interface ActivitySession {
+  type: 'revision' | 'topical-past-paper' | 'full-paper' | 're-revision';
+  targetTopics?: string[]; // Which topics to focus on
+  paperCodes?: string[]; // Which papers (P1, P2, P3, etc)
+  description: string;
+}
+
+/**
  * Subject-wise session within a day
  */
 export interface SubjectSessionInDay {
   subject: string; // Subject code: 9701, 9702, 9709, 9618, 8021
   subjectName: string;
   paperCode?: string; // e.g., 9702/21 for specific paper
+  paperCodes?: string[]; // Array of papers involved in this session (for past papers)
   topics: (string | TopicWithPaper)[]; // Chapter/topic names, optionally with paper code
-  activity: 'revision' | 'topical-past-paper' | 'full-paper';
+  activity: 'revision' | 'topical-past-paper' | 'full-paper' | 're-revision';
   focusWeakAreas?: boolean;
   description?: string;
+  // Activity-specific metadata
+  isTopicalPastPaperFor?: string[]; // If topical past paper, which topics
+  fullPaperCodes?: string[]; // For full paper activity, which papers
 }
 
 /**

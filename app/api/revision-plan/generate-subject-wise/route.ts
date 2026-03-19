@@ -419,32 +419,65 @@ ${paperDetails}`
 
   // Ensure exactly 40 days with intelligent topic cycling
   // Build topic indices and paper allocation for smart distribution
-  type TopicWithMetadata = { name: string; paperCode: string; paperName: string }
-  type SubjectTopicTracker = { allTopics: TopicWithMetadata[]; currentIndex: number }
+  type TopicWithMetadata = { 
+    name: string
+    paperCode: string // Primary paper
+    paperName: string // Short name like "P1", "P2"
+    allPaperCodes?: string[] // All papers this topic appears in
+  }
+  type SubjectTopicTracker = { 
+    allTopics: TopicWithMetadata[]
+    topicsByName: Map<string, TopicWithMetadata[]> // Group same topics by name
+    currentIndex: number 
+  }
   
   const topicTrackers: Record<string, SubjectTopicTracker> = {}
   
-  // Flatten topics with paper metadata
+  // Flatten topics with paper metadata and group by topic name
   for (const subj of [...primaries, ...secondaries]) {
     const allTopics: TopicWithMetadata[] = []
+    const topicsByName = new Map<string, TopicWithMetadata[]>()
     
-    // Map paper codes to paper names (e.g., "P3" -> "Paper 3", "21" -> "Paper 21")
+    // Map paper codes: "21" -> "P1", "22" -> "P2", etc.
     const paperCodeMap: Record<string, string> = {}
     for (const paper of subj.papers) {
-      paperCodeMap[paper.paperCode.split('/')[1]] = paper.paperCode
+      const paperNum = paper.paperCode.split('/')[1]
+      const paperPrefix = paperNum.startsWith('2') ? `P${parseInt(paperNum[1])}` : paperNum
+      paperCodeMap[paperNum] = paperPrefix
     }
     
+    // Build topics grouped by name
+    const topicNameMap = new Map<string, string[]>() // topic name -> [paperCodes]
     for (const [paperCode, topics] of Object.entries(subj.paperTopics)) {
       for (const topic of topics) {
-        allTopics.push({
-          name: topic,
-          paperCode: paperCode,
-          paperName: paperCodeMap[paperCode] || paperCode
-        })
+        if (!topicNameMap.has(topic)) topicNameMap.set(topic, [])
+        topicNameMap.get(topic)?.push(paperCode)
       }
     }
     
-    topicTrackers[subj.subject] = { allTopics, currentIndex: 0 }
+    // Create flat list with paper tracking
+    for (const [topicName, paperCodes] of topicNameMap) {
+      for (let i = 0; i < paperCodes.length; i++) {
+        const paperCode = paperCodes[i]
+        allTopics.push({
+          name: topicName,
+          paperCode: paperCode,
+          paperName: paperCodeMap[paperCode] || paperCode,
+          allPaperCodes: paperCodes.map(pc => paperCodeMap[pc] || pc)
+        })
+      }
+      
+      // Also track by topic name
+      if (!topicsByName.has(topicName)) topicsByName.set(topicName, [])
+      topicsByName.get(topicName)?.push(...paperCodes.map((pc, idx) => ({
+        name: topicName,
+        paperCode: pc,
+        paperName: paperCodeMap[pc] || pc,
+        allPaperCodes: paperCodes.map(p => paperCodeMap[p] || p)
+      } as TopicWithMetadata)))
+    }
+    
+    topicTrackers[subj.subject] = { allTopics, topicsByName, currentIndex: 0 }
   }
 
   // Smart topic selection based on subject's topic count
@@ -501,24 +534,33 @@ ${paperDetails}`
       const activity: 'revision' | 'topical-past-paper' | 'full-paper' = 
         phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')
 
-      // Format topics with paper code: "FORCES (P4)", "KINEMATICS (P4)"
+      // Format topics with paper code: "FORCES (P1)", "KINEMATICS (P2)"
       const formattedTopics = topicsWithMetadata.map(t => ({
         name: t.name,
-        paperCode: t.paperCode
+        paperCode: t.paperCode,
+        paperName: t.paperName,
+        allPaperCodes: t.allPaperCodes
       }))
 
       const topicDisplay = topicsWithMetadata
-        .map(t => `${t.name} (${t.paperCode})`)
+        .map(t => `${t.name} (${t.paperName})`)
         .join(', ')
+
+      // Include paper names in description for topical past papers
+      const description = topicDisplay.length > 0 
+        ? (activity === 'topical-past-paper' 
+          ? `${s.subjectName} ${s.subjectName === 'Physics' || s.subjectName === 'Chemistry' || s.subjectName === 'Mathematics' ? 'Topical' : ''} Past Paper: ${topicDisplay}`
+          : `${s.subjectName}: ${topicDisplay}`)
+        : `${s.subjectName} - General revision`
 
       return {
         subject: s.subject,
         subjectName: s.subjectName,
         topics: formattedTopics.length > 0 ? formattedTopics : [{ name: 'General Revision', paperCode: '' }],
         activity,
-        description: topicDisplay.length > 0 
-          ? `${s.subjectName}: ${topicDisplay}`
-          : `${s.subjectName} - General revision`
+        description,
+        isTopicalPastPaperFor: activity === 'topical-past-paper' ? topicsWithMetadata.map(t => t.name) : undefined,
+        paperCodes: topicsWithMetadata.map(t => t.paperName).filter((v, i, a) => a.indexOf(v) === i) // unique
       }
     })
 
