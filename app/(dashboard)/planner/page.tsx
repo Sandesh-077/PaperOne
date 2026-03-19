@@ -181,6 +181,7 @@ export default function PlannerPage() {
     } finally {
       setRegeneratingPlan(false)
     }
+  }
 
   if (loading) {
     return (
