@@ -437,6 +437,7 @@ export async function POST(request: Request) {
         await prisma.dailyTask.create({
           data: {
             userId: user.id,
+            planId: savedPlan.id,
             date: new Date(day.date),
             sessionSlot: 'subject-wise',
             subject: subject.subject,
