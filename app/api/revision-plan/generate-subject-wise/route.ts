@@ -254,6 +254,22 @@ ${paperDetails}`
 
   // Ensure exactly 40 days
   while (days.length < 40) {
+    if (days.length === 0) {
+      // Initialize first day if no days exist
+      days.push({
+        date: toIsoDateString(today),
+        dayNumber: 1,
+        phase: 'foundation',
+        subjects: primaries.slice(0, 3).map((s) => ({
+          subject: s.subject,
+          subjectName: s.subjectName,
+          topics: ['General Revision'],
+          activity: 'revision' as const,
+          description: `${s.subjectName} - General revision`
+        }))
+      })
+    }
+
     const lastDay = days[days.length - 1]
     const nextDate = new Date(`${lastDay.date}T00:00:00Z`)
     nextDate.setUTCDate(nextDate.getUTCDate() + 1)
