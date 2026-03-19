@@ -14,6 +14,37 @@ interface DailyTask {
   completed: boolean
 }
 
+interface SubjectSessionInDay {
+  subject: string
+  subjectName: string
+  topics: string[]
+  activity: 'revision' | 'topical-past-paper' | 'full-paper'
+  description?: string
+}
+
+interface SubjectWisePlanDay {
+  date: string
+  dayNumber: number
+  phase: 'foundation' | 'blitz' | 'exam'
+  isExamDay?: boolean
+  examEntries?: Array<{ subject: string; subjectName: string; paperCode: string; examDate: string }>
+  subjects: SubjectSessionInDay[]
+}
+
+interface RevisionPhase {
+  name: string
+  label: string
+  startDate: string
+  endDate: string
+  description: string
+}
+
+interface SubjectWiseRevisionData {
+  phases: RevisionPhase[]
+  days: SubjectWisePlanDay[]
+  formatVersion: 'subject-wise'
+}
+
 interface PomodoroSession {
   id: string
   subject: string | null
@@ -44,8 +75,9 @@ interface PlanData {
     studyHoursPerDay: number
     mode?: 'regular' | 'exam'
   } | null
-  todayTasks: DailyTask[]
-  weekTasks: DailyTask[]
+  planData?: SubjectWiseRevisionData // New subject-wise format
+  todayTasks?: DailyTask[]
+  weekTasks?: DailyTask[]
   stats: {
     totalTasks: number
     completedTasks: number
@@ -86,9 +118,36 @@ export default function PlannerPage() {
 
   const fetchPlan = async () => {
     try {
-      const response = await fetch('/api/revision-plan')
+      // Try new subject-wise endpoint first
+      let response = await fetch('/api/revision-plan/generate-subject-wise')
+      let planData = null
+
       if (response.ok) {
-        const planData = await response.json()
+        const subjectWiseData = await response.json()
+        if (subjectWiseData.success && subjectWiseData.plan) {
+          setData({
+            plan: {
+              id: '1',
+              generatedAt: new Date().toISOString(),
+              firstExamDate: subjectWiseData.firstExamDate,
+              lastExamDate: subjectWiseData.lastExamDate,
+              studyHoursPerDay: 5
+            },
+            planData: subjectWiseData.plan,
+            stats: null,
+            nextExams: [],
+            todayTasks: undefined,
+            weekTasks: undefined
+          })
+          setLoading(false)
+          return
+        }
+      }
+
+      // Fall back to old endpoint
+      response = await fetch('/api/revision-plan')
+      if (response.ok) {
+        planData = await response.json()
         setData(planData)
       }
     } catch (err) {
@@ -343,18 +402,127 @@ export default function PlannerPage() {
         )}
       </div>
 
-      {/* Today's Sessions */}
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today’s Sessions</h2>
-        <p className="text-sm text-gray-600 mb-4">{today}</p>
-        
-        {data.todayTasks.length === 0 ? (
-          <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200 text-center">
-            <p className="text-gray-500">No tasks scheduled for today. Well done! 🎉</p>
+      {/* Subject-Wise Plan Display (New Format) */}
+      {data.planData?.formatVersion === 'subject-wise' && data.planData?.days && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">📖 40-Day Revision Plan</h2>
+
+          {/* Plan Phases Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            {data.planData.phases.map((phase) => (
+              <div key={phase.name} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-4 border border-slate-200">
+                <h3 className="font-semibold text-gray-900">{phase.label}</h3>
+                <p className="text-xs text-gray-600 mt-1">{phase.description}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {phase.startDate} → {phase.endDate}
+                </p>
+              </div>
+            ))}
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {data.todayTasks.map((task) => (
+
+          {/* Daily Plans */}
+          <div className="space-y-4">
+            {data.planData.days.map((day) => {
+              const dayDate = new Date(day.date)
+              const dayName = dayDate.toLocaleDateString('en-GB', { weekday: 'short' })
+              const isToday = day.date === new Date().toISOString().split('T')[0]
+              const phaseBg = day.phase === 'foundation' ? 'bg-blue-50' : day.phase === 'blitz' ? 'bg-amber-50' : 'bg-red-50'
+              const phaseBorder = day.phase === 'foundation' ? 'border-blue-200' : day.phase === 'blitz' ? 'border-amber-200' : 'border-red-200'
+
+              return (
+                <div
+                  key={day.date}
+                  className={`rounded-lg border-2 p-4 transition ${
+                    isToday ? 'border-blue-500 bg-blue-50 shadow-md' : `${phaseBorder} ${phaseBg}`
+                  }`}
+                >
+                  {/* Day Header */}
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
+                    <div>
+                      <h3 className="font-bold text-gray-900">
+                        Day {day.dayNumber} · {dayName} {isToday ? '(TODAY)' : day.date}
+                      </h3>
+                      <span className="text-xs font-medium px-2 py-1 rounded-full inline-block mt-1 bg-white border border-gray-300">
+                        {day.phase === 'foundation' ? '📚 Foundation' : day.phase === 'blitz' ? '⚡ Blitz' : '📝 Exam Practice'}
+                      </span>
+                      {day.isExamDay && day.examEntries && (
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full ml-2 inline-block bg-red-200 text-red-800">
+                          🚨 EXAM DAY: {day.examEntries.map(e => `${e.paperCode}`).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Subjects for the Day */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {day.subjects.map((subject, idx) => (
+                      <div
+                        key={`${day.date}-${subject.subject}`}
+                        className={`rounded-lg p-4 border-l-4 ${SUBJECT_COLORS[subject.subject] || SUBJECT_COLORS.default}`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-gray-900">{subject.subjectName}</h4>
+                          <span className="text-xs font-medium bg-white px-2 py-1 rounded border border-gray-300">
+                            {subject.activity === 'revision'
+                              ? '📖 Revision'
+                              : subject.activity === 'topical-past-paper'
+                              ? '📋 Topical Papers'
+                              : '📝 Full Paper'}
+                          </span>
+                        </div>
+
+                        {/* Topics with Checkboxes */}
+                        {Array.isArray(subject.topics) && subject.topics.length > 0 ? (
+                          <div className="space-y-2">
+                            {subject.topics.map((topic, tidx) => {
+                              const topicName = typeof topic === 'string' ? topic : (topic as any)?.name || topic
+                              const paperCode = typeof topic === 'object' && (topic as any)?.paperCode ? ` (${(topic as any).paperCode})` : ''
+                              return (
+                                <div key={tidx} className="flex items-start gap-3">
+                                  <input
+                                    type="checkbox"
+                                    className="mt-1 w-4 h-4 cursor-pointer flex-shrink-0"
+                                    defaultChecked={(topic as any)?.completed || false}
+                                  />
+                                  <span className="text-sm text-gray-700 py-1">
+                                    {topicName}{paperCode}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-600 italic">No specific topics assigned</p>
+                        )}
+
+                        {subject.description && (
+                          <p className="text-xs text-gray-600 mt-3 pt-3 border-t border-gray-200">
+                            {subject.description}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Today's Sessions - Only show if OLD format */}
+      {!data.planData && data.todayTasks && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today's Sessions</h2>
+          <p className="text-sm text-gray-600 mb-4">{today}</p>
+          
+          {data.todayTasks.length === 0 ? (
+            <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200 text-center">
+              <p className="text-gray-500">No tasks scheduled for today. Well done! 🎉</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {data.todayTasks.map((task) => (
               <div
                 key={task.id}
                 className={`rounded-lg p-5 shadow-sm border border-gray-200 transition ${
@@ -387,10 +555,11 @@ export default function PlannerPage() {
         )}
       </div>
 
-      {/* Weekly Overview */}
-      <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">📅 This Week</h2>
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 overflow-x-auto">
+      {/* Weekly Overview - Only show if OLD format */}
+      {!data.planData && data.weekTasks && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">📅 This Week</h2>
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 overflow-x-auto">
           <div className="grid grid-cols-7 gap-3 min-w-full">
             {dayNames.map((day, idx) => {
               const date = new Date(firstDay)

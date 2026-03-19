@@ -61,11 +61,22 @@ export interface RevisionPhase {
 }
 
 /**
- * Single topic in a subject session with paper reference
+ * Single topic in a subject session with paper reference and completion tracking
  */
 export interface TopicWithPaper {
   name: string;
-  paperCode?: string; // e.g., "21" if from paper 9702/21
+  paperCode?: string; // e.g., "P4" or "21" if from specific paper
+  completed?: boolean;
+  completedAt?: string;
+}
+
+/**
+ * Topic progress for a subject on a specific day
+ */
+export interface DayTopicProgress {
+  dayNumber: number;
+  subject: string;
+  topics: TopicWithPaper[];
 }
 
 /**

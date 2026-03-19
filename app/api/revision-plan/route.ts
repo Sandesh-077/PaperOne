@@ -157,6 +157,36 @@ export async function GET(req: Request) {
     // STEP 7: Return response
     const isExamModeActive = plan?.planData?.meta?.mode === 'exam'
 
+    // Check if this is subject-wise plan (new format) or old format
+    const isSubjectWise = plan?.planData?.formatVersion === 'subject-wise'
+
+    if (isSubjectWise) {
+      // Return new subject-wise format with daily subjects and topics
+      return NextResponse.json({
+        plan: {
+          id: plan.id,
+          generatedAt: plan.generatedAt,
+          firstExamDate: plan.firstExamDate,
+          lastExamDate: plan.lastExamDate,
+          studyHoursPerDay: plan.studyHoursPerDay,
+          mode: isExamModeActive ? 'exam' : 'regular'
+        },
+        planData: plan.planData, // Full subject-wise plan with phases and days
+        stats: {
+          totalTasks: totalTasks,
+          completedTasks: completedTasks,
+          completionPercent: completionPercent
+        },
+        nextExams: nextExamsWithCountdown,
+        examMode: {
+          ready: examModeReady,
+          active: isExamModeActive,
+          daysUntilFirstExam
+        }
+      })
+    }
+
+    // Fall back to old format for backward compatibility
     return NextResponse.json({
       plan: {
         id: plan.id,

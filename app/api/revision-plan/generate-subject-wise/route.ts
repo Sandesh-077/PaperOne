@@ -418,16 +418,61 @@ ${paperDetails}`
   })
 
   // Ensure exactly 40 days with intelligent topic cycling
-  // Build topic indices for cycling through actual database topics
-  const topicIndices: Record<string, number> = {}
-  const allTopicsNeeded: Record<string, string[]> = {}
+  // Build topic indices and paper allocation for smart distribution
+  type TopicWithMetadata = { name: string; paperCode: string; paperName: string }
+  type SubjectTopicTracker = { allTopics: TopicWithMetadata[]; currentIndex: number }
   
+  const topicTrackers: Record<string, SubjectTopicTracker> = {}
+  
+  // Flatten topics with paper metadata
   for (const subj of [...primaries, ...secondaries]) {
-    allTopicsNeeded[subj.subject] = []
-    for (const topics of Object.values(subj.paperTopics)) {
-      allTopicsNeeded[subj.subject].push(...topics)
+    const allTopics: TopicWithMetadata[] = []
+    
+    // Map paper codes to paper names (e.g., "P3" -> "Paper 3", "21" -> "Paper 21")
+    const paperCodeMap: Record<string, string> = {}
+    for (const exam of examEntries.filter(e => e.subject === subj.subject)) {
+      paperCodeMap[exam.paperCode.split('/')[1]] = exam.paperCode
     }
-    topicIndices[subj.subject] = 0
+    
+    for (const [paperCode, topics] of Object.entries(subj.paperTopics)) {
+      for (const topic of topics) {
+        allTopics.push({
+          name: topic,
+          paperCode: paperCode,
+          paperName: paperCodeMap[paperCode] || paperCode
+        })
+      }
+    }
+    
+    topicTrackers[subj.subject] = { allTopics, currentIndex: 0 }
+  }
+
+  // Smart topic selection based on subject's topic count
+  function getTopicsForDay(subject: string, phase: 'foundation' | 'blitz' | 'exam'): TopicWithMetadata[] {
+    const tracker = topicTrackers[subject]
+    if (!tracker || tracker.allTopics.length === 0) {
+      return []
+    }
+    
+    // Determine how many topics to assign based on subject and phase
+    const totalTopics = tracker.allTopics.length
+    let topicsToAssign = 2
+    
+    // Special rules for subjects with few chapters
+    if (totalTopics <= 4) topicsToAssign = 1  // Mechanics, small modules
+    else if (totalTopics <= 8) topicsToAssign = 1
+    else if (phase === 'blitz') topicsToAssign = 2
+    else if (phase === 'exam') topicsToAssign = 3
+    
+    // Get topics cycling through the list
+    const selected: TopicWithMetadata[] = []
+    for (let i = 0; i < topicsToAssign; i++) {
+      const idx = (tracker.currentIndex + i) % tracker.allTopics.length
+      selected.push(tracker.allTopics[idx])
+    }
+    
+    tracker.currentIndex = (tracker.currentIndex + topicsToAssign) % tracker.allTopics.length
+    return selected
   }
 
   while (days.length < 40) {
@@ -451,21 +496,28 @@ ${paperDetails}`
     }
 
     const subjects = subjectsForDay.map((s) => {
-      const allTopics = allTopicsNeeded[s.subject] || []
-      const startIdx = topicIndices[s.subject]
-      const topicsForDay = allTopics.slice(startIdx, startIdx + 2)
-      topicIndices[s.subject] = (startIdx + 2) % (allTopics.length || 1)
-
+      const topicsWithMetadata = getTopicsForDay(s.subject, phase)
+      
       const activity: 'revision' | 'topical-past-paper' | 'full-paper' = 
         phase === 'exam' ? 'full-paper' : (phase === 'blitz' ? 'topical-past-paper' : 'revision')
+
+      // Format topics with paper code: "FORCES (P4)", "KINEMATICS (P4)"
+      const formattedTopics = topicsWithMetadata.map(t => ({
+        name: t.name,
+        paperCode: t.paperCode
+      }))
+
+      const topicDisplay = topicsWithMetadata
+        .map(t => `${t.name} (${t.paperCode})`)
+        .join(', ')
 
       return {
         subject: s.subject,
         subjectName: s.subjectName,
-        topics: topicsForDay.length > 0 ? topicsForDay : ['General Revision'],
+        topics: formattedTopics.length > 0 ? formattedTopics : [{ name: 'General Revision', paperCode: '' }],
         activity,
-        description: topicsForDay.length > 0 
-          ? `${s.subjectName}: ${topicsForDay.join(', ')}`
+        description: topicDisplay.length > 0 
+          ? `${s.subjectName}: ${topicDisplay}`
           : `${s.subjectName} - General revision`
       }
     })
@@ -506,6 +558,78 @@ ${paperDetails}`
     phases,
     days,
     formatVersion: 'subject-wise'
+  }
+}
+
+export async function GET(request: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+    if (!user) return new Response(JSON.stringify({ error: 'User not found' }), { status: 404 })
+
+    const prismaAny = prisma as any
+
+    // Get active revision plan
+    const plan = await prismaAny.revisionPlan.findFirst({
+      where: { userId: user.id, isActive: true },
+      orderBy: { generatedAt: 'desc' }
+    })
+
+    if (!plan || !plan.planData) {
+      return new Response(JSON.stringify({ error: 'No active plan found', plan: null }), { status: 404 })
+    }
+
+    // Get all daily tasks for this plan
+    const tasks = await prismaAny.dailyTask.findMany({
+      where: { planId: plan.id },
+      orderBy: [{ date: 'asc' }, { subject: 'asc' }]
+    })
+
+    // Convert planData to proper format
+    const planData = plan.planData as SubjectWiseRevisionData
+    
+    // Enhance plan with current completion status from tasks
+    const enhancedDays = planData.days.map((day: SubjectWisePlanDay) => {
+      const dayTasks = tasks.filter(t => {
+        const taskDate = new Date(t.date)
+        const dayDate = new Date(day.date)
+        return taskDate.toDateString() === dayDate.toDateString()
+      })
+
+      const enhancedSubjects = day.subjects.map((subject: SubjectSessionInDay) => {
+        const taskForSubject = dayTasks.find(t => t.subject === subject.subject)
+        const topicsData = taskForSubject?.topics || subject.topics || []
+        
+        return {
+          ...subject,
+          topics: Array.isArray(topicsData) ? topicsData : (
+            typeof topicsData === 'string' ? 
+              [{ name: topicsData as string, paperCode: '', completed: false }] : 
+              topicsData
+          )
+        }
+      })
+
+      return {
+        ...day,
+        subjects: enhancedSubjects
+      }
+    })
+
+    return new Response(JSON.stringify({
+      success: true,
+      plan: {
+        ...planData,
+        days: enhancedDays
+      },
+      firstExamDate: plan.firstExamDate,
+      lastExamDate: plan.lastExamDate
+    }), { headers: { 'Content-Type': 'application/json' } })
+  } catch (error: any) {
+    console.error('Error fetching subject-wise plan:', error)
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
   }
 }
 
@@ -633,12 +757,17 @@ export async function POST(request: Request) {
       }
     })
 
-    // Clear existing daily tasks
-    await prisma.dailyTask.deleteMany({ where: { userId: user.id } })
-
-    // Save daily tasks
+    // Save daily tasks with detailed topic information
     for (const day of planData.days) {
       for (const subject of day.subjects) {
+        // Format topics with paperCode if available
+        const topicsJson = subject.topics.map((t: any) => ({
+          name: typeof t === 'string' ? t : t.name,
+          paperCode: typeof t === 'string' ? '' : (t.paperCode || ''),
+          completed: false,
+          completedAt: null
+        }))
+
         await prisma.dailyTask.create({
           data: {
             userId: user.id,
@@ -647,11 +776,14 @@ export async function POST(request: Request) {
             sessionSlot: 'subject-wise',
             subject: subject.subject,
             subjectName: subject.subjectName,
-            taskDesc: subject.description || `${subject.subjectName}: ${subject.topics.join(', ')}`,
+            taskDesc: subject.description || `${subject.subjectName}: ${subject.topics.map((t: any) => typeof t === 'string' ? t : t.name).join(', ')}`,
             taskType: subject.activity,
+            activity: subject.activity,
+            topics: topicsJson,
+            dayNumber: day.dayNumber,
             phase: day.phase,
             completed: false
-          }
+          } as any
         })
       }
     }
