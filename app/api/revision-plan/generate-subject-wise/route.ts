@@ -430,8 +430,8 @@ ${paperDetails}`
     
     // Map paper codes to paper names (e.g., "P3" -> "Paper 3", "21" -> "Paper 21")
     const paperCodeMap: Record<string, string> = {}
-    for (const exam of examEntries.filter(e => e.subject === subj.subject)) {
-      paperCodeMap[exam.paperCode.split('/')[1]] = exam.paperCode
+    for (const paper of subj.papers) {
+      paperCodeMap[paper.paperCode.split('/')[1]] = paper.paperCode
     }
     
     for (const [paperCode, topics] of Object.entries(subj.paperTopics)) {
@@ -592,14 +592,14 @@ export async function GET(request: Request) {
     
     // Enhance plan with current completion status from tasks
     const enhancedDays = planData.days.map((day: SubjectWisePlanDay) => {
-      const dayTasks = tasks.filter(t => {
+      const dayTasks = tasks.filter((t: any) => {
         const taskDate = new Date(t.date)
         const dayDate = new Date(day.date)
         return taskDate.toDateString() === dayDate.toDateString()
       })
 
       const enhancedSubjects = day.subjects.map((subject: SubjectSessionInDay) => {
-        const taskForSubject = dayTasks.find(t => t.subject === subject.subject)
+        const taskForSubject = dayTasks.find((t: any) => t.subject === subject.subject)
         const topicsData = taskForSubject?.topics || subject.topics || []
         
         return {
