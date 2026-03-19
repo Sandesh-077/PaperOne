@@ -26,6 +26,34 @@ export async function GET(req: Request) {
       }
     })
 
+    const allExamEntries = await prismaAny.examEntry.findMany({
+      where: { userId: user.id },
+      orderBy: { examDate: 'asc' }
+    })
+
+    const now = new Date()
+    const todayStartForMode = new Date(now)
+    todayStartForMode.setHours(0, 0, 0, 0)
+
+    const firstExamDate = allExamEntries.length > 0 ? new Date(allExamEntries[0].examDate) : null
+    const lastExamDateAll = allExamEntries.length > 0 ? new Date(allExamEntries[allExamEntries.length - 1].examDate) : null
+
+    let examModeReady = false
+    let daysUntilFirstExam: number | null = null
+
+    if (firstExamDate && lastExamDateAll) {
+      const firstExamStart = new Date(firstExamDate)
+      firstExamStart.setHours(0, 0, 0, 0)
+      const firstExamWindowStart = new Date(firstExamStart)
+      firstExamWindowStart.setDate(firstExamWindowStart.getDate() - 2)
+
+      const lastExamEnd = new Date(lastExamDateAll)
+      lastExamEnd.setHours(23, 59, 59, 999)
+
+      daysUntilFirstExam = Math.ceil((firstExamStart.getTime() - todayStartForMode.getTime()) / 86400000)
+      examModeReady = todayStartForMode >= firstExamWindowStart && todayStartForMode <= lastExamEnd
+    }
+
     // Return empty response if no active plan
     if (!plan) {
       return NextResponse.json({
@@ -33,7 +61,12 @@ export async function GET(req: Request) {
         todayTasks: [],
         weekTasks: [],
         stats: null,
-        nextExams: []
+        nextExams: [],
+        examMode: {
+          ready: examModeReady,
+          active: false,
+          daysUntilFirstExam
+        }
       })
     }
 
@@ -97,7 +130,6 @@ export async function GET(req: Request) {
     const completionPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
     // STEP 6: Get next exam countdowns
-    const now = new Date()
     const nextExams = await prismaAny.examEntry.findMany({
       where: {
         userId: user.id,
@@ -123,13 +155,16 @@ export async function GET(req: Request) {
     })
 
     // STEP 7: Return response
+    const isExamModeActive = plan?.planData?.meta?.mode === 'exam'
+
     return NextResponse.json({
       plan: {
         id: plan.id,
         generatedAt: plan.generatedAt,
         firstExamDate: plan.firstExamDate,
         lastExamDate: plan.lastExamDate,
-        studyHoursPerDay: plan.studyHoursPerDay
+        studyHoursPerDay: plan.studyHoursPerDay,
+        mode: isExamModeActive ? 'exam' : 'regular'
       },
       todayTasks,
       weekTasks,
@@ -138,7 +173,12 @@ export async function GET(req: Request) {
         completedTasks,
         completionPercent
       },
-      nextExams: nextExamsWithCountdown
+      nextExams: nextExamsWithCountdown,
+      examMode: {
+        ready: examModeReady,
+        active: isExamModeActive,
+        daysUntilFirstExam
+      }
     })
   } catch (error) {
     console.error('Error fetching revision plan:', error)

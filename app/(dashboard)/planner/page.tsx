@@ -42,6 +42,7 @@ interface PlanData {
     firstExamDate: string
     lastExamDate: string
     studyHoursPerDay: number
+    mode?: 'regular' | 'exam'
   } | null
   todayTasks: DailyTask[]
   weekTasks: DailyTask[]
@@ -51,6 +52,11 @@ interface PlanData {
     completionPercent: number
   } | null
   nextExams: ExamCountdown[]
+  examMode?: {
+    ready: boolean
+    active: boolean
+    daysUntilFirstExam: number | null
+  }
 }
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -67,6 +73,7 @@ export default function PlannerPage() {
   const [data, setData] = useState<PlanData | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null)
+  const [activatingExamMode, setActivatingExamMode] = useState(false)
   const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
 
   useEffect(() => {
@@ -121,6 +128,32 @@ export default function PlannerPage() {
       console.error('Failed to update task:', err)
     } finally {
       setUpdatingTaskId(null)
+    }
+  }
+
+  const handleActivateExamMode = async () => {
+    if (!data?.plan) return
+
+    setActivatingExamMode(true)
+    try {
+      const response = await fetch('/api/revision-plan/exam-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studyHoursPerDay: data.plan.studyHoursPerDay })
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        alert(err?.error || 'Failed to activate Exam Mode')
+        return
+      }
+
+      await fetchPlan()
+    } catch (err) {
+      console.error('Failed to activate exam mode:', err)
+      alert('Failed to activate Exam Mode')
+    } finally {
+      setActivatingExamMode(false)
     }
   }
 
@@ -196,6 +229,31 @@ export default function PlannerPage() {
         <h1 className="text-3xl font-bold text-gray-900">Daily Planner</h1>
         <p className="text-gray-600 mt-1">Your personalized study schedule</p>
       </div>
+
+      {data.examMode?.ready && !data.examMode?.active && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <p className="text-red-700 font-semibold">🚨 Exam Mode Ready</p>
+            <p className="text-sm text-red-700 mt-1">
+              You are in the final exam window ({data.examMode.daysUntilFirstExam ?? 0} day(s) to first exam). Activate adaptive Exam Mode now.
+            </p>
+          </div>
+          <button
+            onClick={handleActivateExamMode}
+            disabled={activatingExamMode}
+            className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold rounded-lg transition"
+          >
+            {activatingExamMode ? 'Activating...' : 'Activate Exam Mode'}
+          </button>
+        </div>
+      )}
+
+      {data.examMode?.active && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+          <p className="text-emerald-700 font-semibold">✅ Exam Mode Active</p>
+          <p className="text-sm text-emerald-700 mt-1">Plan is now adapted for paper-wise exam execution and progress-based intensity.</p>
+        </div>
+      )}
 
       {/* Next Exam Countdowns */}
       {data.nextExams.length > 0 && (
