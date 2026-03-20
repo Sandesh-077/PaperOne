@@ -356,7 +356,7 @@ export default function PlannerPage() {
     return 'bg-gray-50 border-l-4 border-gray-500'
   }
 
-  const sessionLabel = (slot: string) => {
+  const sessionLabel = (slot: string): string => {
     const lower = slot.toLowerCase()
     if (lower === 'morning') return '🌅 Morning'
     if (lower === 'afternoon') return '☀️ Afternoon'
@@ -364,17 +364,18 @@ export default function PlannerPage() {
     return `📍 ${slot}`
   }
 
-  // Group week tasks by date
   const weekDays: Record<string, DailyTask[]> = {}
   if (data.weekTasks) {
-    data.weekTasks.forEach((task) => {
+    data.weekTasks.forEach(task => {
       const date = task.date.split('T')[0]
-      if (!weekDays[date]) weekDays[date] = []
+      if (!weekDays[date]) {
+        weekDays[date] = []
+      }
       weekDays[date].push(task)
     })
   }
 
-  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const dayNames: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const today_date = new Date()
   const firstDay = new Date(today_date)
   firstDay.setDate(firstDay.getDate() - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1))
