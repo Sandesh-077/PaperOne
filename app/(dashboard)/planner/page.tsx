@@ -649,7 +649,7 @@ export default function PlannerPage() {
                     type="checkbox"
                     checked={task.completed}
                     onChange={() => handleToggleTask(task.id, task.completed)}
-                    disabled={updatingTaskId === task.id}
+                    disabled={topicUpdating === task.id}
                     className="mt-1 w-5 h-5 cursor-pointer"
                   />
                   <div className="flex-1">
