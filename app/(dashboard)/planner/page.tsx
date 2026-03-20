@@ -365,11 +365,13 @@ export default function PlannerPage() {
 
   // Group week tasks by date
   const weekDays: Record<string, DailyTask[]> = {}
-  data.weekTasks.forEach((task) => {
-    const date = task.date.split('T')[0]
-    if (!weekDays[date]) weekDays[date] = []
-    weekDays[date].push(task)
-  })
+  if (data.weekTasks) {
+    data.weekTasks.forEach((task) => {
+      const date = task.date.split('T')[0]
+      if (!weekDays[date]) weekDays[date] = []
+      weekDays[date].push(task)
+    })
+  }
 
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
   const today_date = new Date()
