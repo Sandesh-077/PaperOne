@@ -642,74 +642,75 @@ export default function PlannerPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {data.todayTasks.map((task) => (
-              <div
-                key={task.id}
-                className={`rounded-lg p-5 shadow-sm border border-gray-200 transition ${
-                  task.completed ? 'bg-gray-50 opacity-60' : 'bg-white hover:shadow-md'
-                } ${sessionColors(task.sessionSlot)}`}
-              >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => handleToggleTask(task.id, task.completed)}
-                    disabled={topicUpdating === task.id}
-                    className="mt-1 w-5 h-5 cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900">{sessionLabel(task.sessionSlot)}</p>
-                    <div className="mt-2">
-                      <span className={`text-xs font-medium px-2 py-1 rounded ${SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default}`}>
-                        {task.subjectName}
-                      </span>
+                <div
+                  key={task.id}
+                  className={`rounded-lg p-5 shadow-sm border border-gray-200 transition ${
+                    task.completed ? 'bg-gray-50 opacity-60' : 'bg-white hover:shadow-md'
+                  } ${sessionColors(task.sessionSlot)}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={task.completed}
+                      onChange={() => handleToggleTask(task.id, task.completed)}
+                      disabled={topicUpdating === task.id}
+                      className="mt-1 w-5 h-5 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">{sessionLabel(task.sessionSlot)}</p>
+                      <div className="mt-2">
+                        <span className={`text-xs font-medium px-2 py-1 rounded ${SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default}`}>
+                          {task.subjectName}
+                        </span>
+                      </div>
+                      <p className={`text-sm mt-3 ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                        {task.taskDesc}
+                      </p>
                     </div>
-                    <p className={`text-sm mt-3 ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                      {task.taskDesc}
-                    </p>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+        </div>
+      )}
 
       {/* Weekly Overview - Only show if OLD format */}
       {!data.planData && data.weekTasks && (
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">📅 This Week</h2>
           <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 overflow-x-auto">
-          <div className="grid grid-cols-7 gap-3 min-w-full">
-            {dayNames.map((day, idx) => {
-              const date = new Date(firstDay)
-              date.setDate(date.getDate() + idx)
-              const dateStr = date.toISOString().split('T')[0]
-              const dayTasks = weekDays[dateStr] || []
-              const isToday = dateStr === new Date().toISOString().split('T')[0]
+            <div className="grid grid-cols-7 gap-3 min-w-full">
+              {dayNames.map((day, idx) => {
+                const date = new Date(firstDay)
+                date.setDate(date.getDate() + idx)
+                const dateStr = date.toISOString().split('T')[0]
+                const dayTasks = weekDays[dateStr] || []
+                const isToday = dateStr === new Date().toISOString().split('T')[0]
 
-              return (
-                <div
-                  key={day}
-                  className={`p-4 rounded-lg border-2 ${
-                    isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'
-                  }`}
-                >
-                  <p className="font-semibold text-gray-900">{day}</p>
-                  <p className="text-sm text-gray-600">{date.getDate()}</p>
-                  <div className="mt-3 space-y-2">
-                    {dayTasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className={`w-3 h-3 rounded-full ${
-                          SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default
-                        }`}
-                        title={task.subjectName}
-                      />
-                    ))}
+                return (
+                  <div
+                    key={day}
+                    className={`p-4 rounded-lg border-2 ${
+                      isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <p className="font-semibold text-gray-900">{day}</p>
+                    <p className="text-sm text-gray-600">{date.getDate()}</p>
+                    <div className="mt-3 space-y-2">
+                      {dayTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className={`w-3 h-3 rounded-full ${
+                            SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default
+                          }`}
+                          title={task.subjectName}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
