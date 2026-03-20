@@ -2,61 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
-
-interface DailyTask {
-  id: string
-  date: string
-  sessionSlot: string
-  subject: string
-  subjectName: string
-  taskDesc: string
-  completed: boolean
-}
-
-interface SubjectSessionInDay {
-  subject: string
-  subjectName: string
-  topics: string[]
-  activity: 'revision' | 'topical-past-paper' | 'full-paper'
-  description?: string
-}
-
-interface SubjectWisePlanDay {
-  date: string
-  dayNumber: number
-  phase: 'foundation' | 'blitz' | 'exam'
-  isExamDay?: boolean
-  examEntries?: Array<{ subject: string; subjectName: string; paperCode: string; examDate: string }>
-  subjects: SubjectSessionInDay[]
-}
-
-interface RevisionPhase {
-  name: string
-  label: string
-  startDate: string
-  endDate: string
-  description: string
-}
-
-interface SubjectWiseRevisionData {
-  phases: RevisionPhase[]
-  days: SubjectWisePlanDay[]
-  formatVersion: 'subject-wise'
-}
-
-interface PomodoroSession {
-  id: string
-  subject: string | null
-  topicName: string | null
-  totalMinutes: number
-}
-
-interface WeekDay {
-  date: string
-  dayName: string
-  tasks: DailyTask[]
-}
 
 interface ExamCountdown {
   subject: string
@@ -66,29 +11,28 @@ interface ExamCountdown {
   daysUntil: number
 }
 
-interface PlanData {
-  plan: {
-    id: string
-    generatedAt: string
-    firstExamDate: string
-    lastExamDate: string
-    studyHoursPerDay: number
-    mode?: 'regular' | 'exam'
-  } | null
-  planData?: SubjectWiseRevisionData // New subject-wise format
-  todayTasks?: DailyTask[]
-  weekTasks?: DailyTask[]
-  stats: {
-    totalTasks: number
-    completedTasks: number
-    completionPercent: number
-  } | null
-  nextExams: ExamCountdown[]
-  examMode?: {
-    ready: boolean
-    active: boolean
-    daysUntilFirstExam: number | null
-  }
+interface PomodoroSession {
+  id: string
+  subject: string | null
+  topicName: string | null
+  totalMinutes: number
+}
+
+interface DailyTask {
+  id: string
+  date: string
+  subject: string
+  subjectName: string
+  topicName?: string
+  activity?: string
+  taskDesc: string
+  completed: boolean
+}
+
+interface Subject {
+  code: string
+  name: string
+  papers: Array<{ code: string; name: string; topics: string[] }>
 }
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -100,84 +44,77 @@ const SUBJECT_COLORS: Record<string, string> = {
   'default': 'bg-gray-100 text-gray-700'
 }
 
-// Daily planner page component for revision tracking
+// Mock subjects data - would come from API in production
+const MOCK_SUBJECTS: Subject[] = [
+  {
+    code: '9702',
+    name: 'Chemistry',
+    papers: [
+      { code: '9702/21', name: 'Paper 2.1', topics: ['Atomic Structure', 'Bonding', 'Thermodynamics', 'Kinetics', 'Equilibrium'] },
+      { code: '9702/22', name: 'Paper 2.2', topics: ['Atomic Structure', 'Bonding', 'Thermodynamics', 'Kinetics', 'Equilibrium'] }
+    ]
+  },
+  {
+    code: '9701',
+    name: 'Physics',
+    papers: [
+      { code: '9701/21', name: 'Paper 2.1', topics: ['Mechanics', 'Waves', 'Thermodynamics', 'Fields'] },
+      { code: '9701/22', name: 'Paper 2.2', topics: ['Mechanics', 'Waves', 'Thermodynamics', 'Fields'] }
+    ]
+  },
+  {
+    code: '9709',
+    name: 'Biology',
+    papers: [
+      { code: '9709/21', name: 'Paper 2.1', topics: ['Cell Biology', 'Genetics', 'Evolution', 'Ecology'] },
+      { code: '9709/22', name: 'Paper 2.2', topics: ['Cell Biology', 'Genetics', 'Evolution', 'Ecology'] }
+    ]
+  }
+]
+
+// Manual Daily Planner Component
 export default function PlannerPage() {
   const { data: session } = useSession()
-  const [data, setData] = useState<PlanData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [topicUpdating, setTopicUpdating] = useState<string | null>(null)
-  const [activatingExamMode, setActivatingExamMode] = useState(false)
-  const [regeneratingPlan, setRegeneratingPlan] = useState(false)
-  const [generatingRecovery, setGeneratingRecovery] = useState(false)
+  const [examData, setExamData] = useState<{ nextExams: ExamCountdown[] }>({ nextExams: [] })
   const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
+  const [loading, setLoading] = useState(true)
+  const [tasks, setTasks] = useState<DailyTask[]>([])
+  const [showPlanModal, setShowPlanModal] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedSubjectForPlan, setSelectedSubjectForPlan] = useState<Subject | null>(null)
+  const [selectedPaper, setSelectedPaper] = useState<string | null>(null)
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const [activityType, setActivityType] = useState<'revision' | 'topical' | 'practice-questions' | 'full-paper'>('revision')
+  const [submittingPlan, setSubmittingPlan] = useState(false)
 
   useEffect(() => {
     if (session) {
-      fetchPlan()
+      fetchExams()
       fetchPomodoroStats()
+      fetchTasks()
     }
   }, [session])
 
-  const fetchPlan = async () => {
+  const fetchExams = async () => {
     try {
-      // Try new subject-wise endpoint first
-      let response = await fetch('/api/revision-plan/generate-subject-wise')
-      let planData = null
-
+      const response = await fetch('/api/exam-entries')
       if (response.ok) {
-        const subjectWiseData = await response.json()
-        if (subjectWiseData.success && subjectWiseData.plan) {
-          // Get all tasks (using a special flag to bypass date filter)
-          const tasksResponse = await fetch('/api/daily-tasks?allTasks=true')
-          const tasksData = tasksResponse.ok ? await tasksResponse.json() : { tasks: [] }
-          const tasksMap = new Map()
-          
-          // Create a map of day-subject pairs to taskIds
-          for (const task of tasksData.tasks || []) {
-            const taskDate = new Date(task.date).toISOString().split('T')[0]
-            const key = `${taskDate}-${task.subject}`
-            tasksMap.set(key, task.id)
-          }
-
-          // Enhance plan data with taskIds
-          const enhancedPlan = {
-            ...subjectWiseData.plan,
-            days: subjectWiseData.plan.days.map((day: any) => ({
-              ...day,
-              subjects: day.subjects.map((subject: any) => ({
-                ...subject,
-                taskId: tasksMap.get(`${day.date}-${subject.subject}`)
-              }))
-            }))
-          }
-
-          setData({
-            plan: {
-              id: '1',
-              generatedAt: new Date().toISOString(),
-              firstExamDate: subjectWiseData.firstExamDate,
-              lastExamDate: subjectWiseData.lastExamDate,
-              studyHoursPerDay: 5
-            },
-            planData: enhancedPlan,
-            stats: null,
-            nextExams: [],
-            todayTasks: undefined,
-            weekTasks: undefined
-          })
-          setLoading(false)
-          return
-        }
-      }
-
-      // Fall back to old endpoint
-      response = await fetch('/api/revision-plan')
-      if (response.ok) {
-        planData = await response.json()
-        setData(planData)
+        const exams = await response.json()
+        const nextExams = exams
+          .map((exam: any) => ({
+            subject: exam.subject,
+            subjectName: exam.subjectName,
+            paperName: exam.paperName,
+            examDate: exam.examDate,
+            daysUntil: Math.ceil((new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+          }))
+          .filter((exam: ExamCountdown) => exam.daysUntil > -1)
+          .sort((a: ExamCountdown, b: ExamCountdown) => a.daysUntil - b.daysUntil)
+          .slice(0, 3)
+        setExamData({ nextExams })
       }
     } catch (err) {
-      console.error('Failed to fetch plan:', err)
+      console.error('Failed to fetch exams:', err)
     } finally {
       setLoading(false)
     }
@@ -198,8 +135,71 @@ export default function PlannerPage() {
     }
   }
 
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch('/api/daily-tasks?allTasks=true')
+      if (response.ok) {
+        const data = await response.json()
+        setTasks(data.tasks || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch tasks:', err)
+    }
+  }
+
+  const handleAddPlan = async () => {
+    if (!selectedSubjectForPlan || (!selectedTopics.length && activityType !== 'full-paper')) {
+      alert('Please select subject and at least one topic')
+      return
+    }
+
+    setSubmittingPlan(true)
+    try {
+      const taskDesc = activityType === 'full-paper' 
+        ? `${selectedPaper} - Full Past Paper` 
+        : `${selectedTopics.join(', ')} - ${activityType.replace('-', ' ')}`
+
+      const response = await fetch('/api/daily-tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: selectedDate,
+          subject: selectedSubjectForPlan.code,
+          subjectName: selectedSubjectForPlan.name,
+          topicName: activityType === 'full-paper' ? selectedPaper : selectedTopics[0],
+          activity: activityType,
+          taskDesc,
+          taskType: activityType === 'revision' ? 'Revision' : 'PastPaper'
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => null)
+        alert(err?.error || 'Failed to create plan')
+        return
+      }
+
+      alert('✓ Plan added successfully!')
+      await fetchTasks()
+      resetPlanForm()
+      setShowPlanModal(false)
+    } catch (err) {
+      console.error('Failed to add plan:', err)
+      alert('Failed to add plan')
+    } finally {
+      setSubmittingPlan(false)
+    }
+  }
+
+  const resetPlanForm = () => {
+    setSelectedDate(new Date().toISOString().split('T')[0])
+    setSelectedSubjectForPlan(null)
+    setSelectedPaper(null)
+    setSelectedTopics([])
+    setActivityType('revision')
+  }
+
   const handleToggleTask = async (taskId: string, currentCompleted: boolean) => {
-    setTopicUpdating(taskId)
     try {
       const response = await fetch(`/api/daily-tasks/${taskId}/complete`, {
         method: 'PATCH',
@@ -207,237 +207,73 @@ export default function PlannerPage() {
         body: JSON.stringify({ completed: !currentCompleted })
       })
       if (response.ok) {
-        // Refresh plan data
-        await fetchPlan()
+        await fetchTasks()
       }
     } catch (err) {
       console.error('Failed to update task:', err)
-    } finally {
-      setTopicUpdating(null)
     }
   }
 
-  const handleToggleTopic = async (taskId: string, topicName: string, currentCompleted: boolean) => {
-    setTopicUpdating(`${taskId}-${topicName}`)
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Delete this plan?')) return
     try {
-      const response = await fetch(`/api/daily-tasks/${taskId}/topic-complete`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topicName, completed: !currentCompleted })
-      })
+      const response = await fetch(`/api/daily-tasks/${taskId}`, { method: 'DELETE' })
       if (response.ok) {
-        // Refresh plan data
-        await fetchPlan()
+        await fetchTasks()
       }
     } catch (err) {
-      console.error('Failed to update topic:', err)
-    } finally {
-      setTopicUpdating(null)
+      console.error('Failed to delete task:', err)
     }
   }
 
-  const handleActivateExamMode = async () => {
-    if (!data?.plan) return
-
-    setActivatingExamMode(true)
-    try {
-      const response = await fetch('/api/revision-plan/exam-mode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studyHoursPerDay: data.plan.studyHoursPerDay })
-      })
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => null)
-        alert(err?.error || 'Failed to activate Exam Mode')
-        return
-      }
-
-      await fetchPlan()
-    } catch (err) {
-      console.error('Failed to activate exam mode:', err)
-      alert('Failed to activate Exam Mode')
-    } finally {
-      setActivatingExamMode(false)
-    }
+  const getTodayTasks = () => {
+    const today = new Date().toISOString().split('T')[0]
+    return tasks.filter(t => t.date.split('T')[0] === today)
   }
 
-  const handleRegeneratePlan = async () => {
-    setRegeneratingPlan(true)
-    try {
-      const response = await fetch('/api/revision-plan/generate-subject-wise', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => null)
-        alert(err?.error || 'Failed to regenerate plan')
-        return
-      }
-
-      const result = await response.json()
-      alert('✓ Subject-wise plan generated successfully!')
-      await fetchPlan()
-    } catch (err) {
-      console.error('Failed to regenerate plan:', err)
-      alert('Failed to regenerate plan')
-    } finally {
-      setRegeneratingPlan(false)
-    }
+  const getUpcomingTasks = () => {
+    const today = new Date().toISOString().split('T')[0]
+    return tasks.filter(t => t.date.split('T')[0] > today).slice(0, 7)
   }
 
-  const handleGenerateRecoveryPlan = async () => {
-    setGeneratingRecovery(true)
-    try {
-      const response = await fetch('/api/revision-plan/generate-recovery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      })
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => null)
-        alert(err?.error || 'Failed to generate recovery plan')
-        return
-      }
-
-      const result = await response.json()
-      alert(`✓ Recovery plan generated!\n${result.message}`)
-      await fetchPlan()
-    } catch (err) {
-      console.error('Failed to generate recovery plan:', err)
-      alert('Failed to generate recovery plan')
-    } finally {
-      setGeneratingRecovery(false)
-    }
+  const dateToLocalString = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading your revision plan...</div>
+        <div className="text-gray-500">Loading planner...</div>
       </div>
     )
   }
 
-  if (!data?.plan) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Daily Planner</h1>
-          <p className="text-gray-600 mt-1">Your personalized study schedule</p>
-        </div>
-
-        <div className="bg-blue-50 rounded-lg p-8 border border-blue-200 text-center">
-          <p className="text-gray-700 mb-4">No revision plan found. Let’s create one!</p>
-          <Link
-            href="/planner/setup"
-            className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition"
-          >
-            Set Up Your Plan
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  const today = new Date().toLocaleDateString('en-GB', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-
-  const sessionColors = (slot: string) => {
-    const lower = slot.toLowerCase()
-    if (lower === 'morning') return 'bg-amber-50 border-l-4 border-amber-500'
-    if (lower === 'afternoon') return 'bg-blue-50 border-l-4 border-blue-500'
-    if (lower === 'evening') return 'bg-purple-50 border-l-4 border-purple-500'
-    return 'bg-gray-50 border-l-4 border-gray-500'
-  }
-
-  const sessionLabel = (slot: string): string => {
-    const lower = slot.toLowerCase()
-    if (lower === 'morning') return '🌅 Morning'
-    if (lower === 'afternoon') return '☀️ Afternoon'
-    if (lower === 'evening') return '🌙 Evening'
-    return `📍 ${slot}`
-  }
-
-  const weekDays: Record<string, DailyTask[]> = {}
-  if (data.weekTasks) {
-    data.weekTasks.forEach(task => {
-      const date = task.date.split('T')[0]
-      if (!weekDays[date]) {
-        weekDays[date] = []
-      }
-      weekDays[date].push(task)
-    })
-  }
-
-  const dayNames: string[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-  const today_date = new Date()
-  const firstDay = new Date(today_date)
-  firstDay.setDate(firstDay.getDate() - (firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1))
+  const todayTasks = getTodayTasks()
+  const upcomingTasks = getUpcomingTasks()
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Daily Planner</h1>
-        <p className="text-gray-600 mt-1">Your personalized study schedule</p>
-      </div>
-
-      {/* Regenerate Plan Button */}
-      <div className="flex justify-end gap-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Daily Planner</h1>
+          <p className="text-gray-600 mt-1">Create your personalized study schedule</p>
+        </div>
         <button
-          onClick={handleGenerateRecoveryPlan}
-          disabled={generatingRecovery}
-          className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-medium rounded-lg transition text-sm"
-          title="Generate a recovery plan if you&apos;ve missed topics"
+          onClick={() => setShowPlanModal(true)}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition shadow-md"
         >
-          {generatingRecovery ? 'Generating...' : '🎯 Generate Recovery Plan'}
-        </button>
-        <button
-          onClick={handleRegeneratePlan}
-          disabled={regeneratingPlan}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-medium rounded-lg transition text-sm"
-        >
-          {regeneratingPlan ? 'Regenerating...' : '🔄 Regenerate Subject-Wise Plan'}
+          + Add Plan
         </button>
       </div>
-
-      {data.examMode?.ready && !data.examMode?.active && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <p className="text-red-700 font-semibold">🚨 Exam Mode Ready</p>
-            <p className="text-sm text-red-700 mt-1">
-              You are in the final exam window ({data.examMode.daysUntilFirstExam ?? 0} day(s) to first exam). Activate adaptive Exam Mode now.
-            </p>
-          </div>
-          <button
-            onClick={handleActivateExamMode}
-            disabled={activatingExamMode}
-            className="px-5 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold rounded-lg transition"
-          >
-            {activatingExamMode ? 'Activating...' : 'Activate Exam Mode'}
-          </button>
-        </div>
-      )}
-
-      {data.examMode?.active && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-          <p className="text-emerald-700 font-semibold">✅ Exam Mode Active</p>
-          <p className="text-sm text-emerald-700 mt-1">Plan is now adapted for paper-wise exam execution and progress-based intensity.</p>
-        </div>
-      )}
 
       {/* Next Exam Countdowns */}
-      {data.nextExams.length > 0 && (
+      {examData.nextExams.length > 0 && (
         <div>
           <h2 className="text-lg font-bold text-gray-900 mb-4">⏰ Next Exams</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {data.nextExams.slice(0, 3).map((exam, idx) => (
+            {examData.nextExams.map((exam, idx) => (
               <div key={idx} className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-5 text-white shadow-md">
                 <p className="text-sm opacity-90">{exam.subjectName}</p>
                 <p className="text-xs opacity-75 mt-1">{exam.paperName}</p>
@@ -457,7 +293,7 @@ export default function PlannerPage() {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-lg font-bold">🍅 Focus Timer</h2>
-            <p className="text-sm opacity-90 mt-1">{pomodoroStats.totalMinutesThisWeek} hours focused this week</p>
+            <p className="text-sm opacity-90 mt-1">{pomodoroStats.totalMinutesThisWeek} minutes focused this week</p>
           </div>
           <button
             onClick={() => window.open('/timer', '_blank')}
@@ -483,260 +319,278 @@ export default function PlannerPage() {
         )}
       </div>
 
-      {/* Subject-Wise Plan Display (New Format) */}
-      {data.planData?.formatVersion === 'subject-wise' && data.planData?.days && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📖 40-Day Revision Plan</h2>
-
-          {/* Plan Phases Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
-            {data.planData.phases.map((phase) => (
-              <div key={phase.name} className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg p-4 border border-slate-200">
-                <h3 className="font-semibold text-gray-900">{phase.label}</h3>
-                <p className="text-xs text-gray-600 mt-1">{phase.description}</p>
-                <p className="text-xs text-gray-500 mt-2">
-                  {phase.startDate} → {phase.endDate}
-                </p>
+      {/* Today's Plan */}
+      <div>
+        <h2 className="text-lg font-bold text-gray-900 mb-4">📚 Today&apos;s Plan</h2>
+        {todayTasks.length === 0 ? (
+          <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200 text-center">
+            <p className="text-gray-500 text-lg">No plans for today yet</p>
+            <p className="text-sm text-gray-400 mt-1">Click &quot;Add Plan&quot; to create your first study session</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {todayTasks.map((task) => (
+              <div
+                key={task.id}
+                className={`rounded-lg p-5 border-l-4 border-blue-500 shadow-sm transition ${
+                  task.completed ? 'bg-gray-50 opacity-70' : 'bg-white hover:shadow-md'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => handleToggleTask(task.id, task.completed)}
+                    className="mt-1 w-5 h-5 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <span className={`text-xs font-medium px-2 py-1 rounded ${SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default}`}>
+                      {task.subjectName}
+                    </span>
+                    <p className={`text-sm font-semibold mt-2 ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                      {task.taskDesc}
+                    </p>
+                    {task.activity && (
+                      <p className="text-xs text-gray-500 mt-1">Type: {task.activity.replace('-', ' ')}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteTask(task.id)}
+                    className="text-gray-400 hover:text-red-500 transition text-sm"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+        )}
+      </div>
 
-          {/* Daily Plans */}
-          <div className="space-y-4">
-            {data.planData.days.map((day) => {
-              const dayDate = new Date(day.date)
-              const dayName = dayDate.toLocaleDateString('en-GB', { weekday: 'short' })
-              const isToday = day.date === new Date().toISOString().split('T')[0]
-              const phaseBg = day.phase === 'foundation' ? 'bg-blue-50' : day.phase === 'blitz' ? 'bg-amber-50' : 'bg-red-50'
-              const phaseBorder = day.phase === 'foundation' ? 'border-blue-200' : day.phase === 'blitz' ? 'border-amber-200' : 'border-red-200'
-
-              return (
-                <div
-                  key={day.date}
-                  className={`rounded-lg border-2 p-4 transition ${
-                    isToday ? 'border-blue-500 bg-blue-50 shadow-md' : `${phaseBorder} ${phaseBg}`
-                  }`}
-                >
-                  {/* Day Header */}
-                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200">
-                    <div>
-                      <h3 className="font-bold text-gray-900">
-                        Day {day.dayNumber} · {dayName} {isToday ? '(TODAY)' : day.date}
-                      </h3>
-                      <span className="text-xs font-medium px-2 py-1 rounded-full inline-block mt-1 bg-white border border-gray-300">
-                        {day.phase === 'foundation' ? '📚 Foundation' : day.phase === 'blitz' ? '⚡ Blitz' : '📝 Exam Practice'}
+      {/* Upcoming Plans */}
+      {upcomingTasks.length > 0 && (
+        <div>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">📅 Upcoming Plans</h2>
+          <div className="space-y-3">
+            {upcomingTasks.map((task) => (
+              <div
+                key={task.id}
+                className={`rounded-lg p-4 bg-white border border-gray-200 flex items-start justify-between transition hover:shadow-md ${
+                  task.completed ? 'opacity-60' : ''
+                }`}
+              >
+                <div className="flex items-start gap-3 flex-1">
+                  <input
+                    type="checkbox"
+                    checked={task.completed}
+                    onChange={() => handleToggleTask(task.id, task.completed)}
+                    className="mt-1 w-4 h-4 cursor-pointer"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400">{dateToLocalString(task.date)}</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded ${SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default}`}>
+                        {task.subjectName}
                       </span>
-                      {day.isExamDay && day.examEntries && (
-                        <span className="text-xs font-semibold px-2 py-1 rounded-full ml-2 inline-block bg-red-200 text-red-800">
-                          🚨 EXAM DAY: {day.examEntries.map(e => `${e.paperCode}`).join(', ')}
-                        </span>
-                      )}
                     </div>
+                    <p className={`text-sm mt-1 ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                      {task.taskDesc}
+                    </p>
                   </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteTask(task.id)}
+                  className="text-gray-300 hover:text-red-500 transition text-sm ml-2"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-                  {/* Subjects for the Day */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {day.subjects.map((subject, idx) => (
-                      <div
-                        key={`${day.date}-${subject.subject}`}
-                        className={`rounded-lg p-4 border-l-4 ${SUBJECT_COLORS[subject.subject] || SUBJECT_COLORS.default}`}
+      {/* Add Plan Modal */}
+      {showPlanModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white flex items-center justify-between">
+              <h2 className="text-2xl font-bold">Create Study Plan</h2>
+              <button
+                onClick={() => {
+                  setShowPlanModal(false)
+                  resetPlanForm()
+                }}
+                className="text-white hover:bg-white hover:bg-opacity-20 w-8 h-8 rounded-full flex items-center justify-center transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Date Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-3">Select Date</label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      selectedDate === new Date().toISOString().split('T')[0]
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => {
+                      const tomorrow = new Date()
+                      tomorrow.setDate(tomorrow.getDate() + 1)
+                      setSelectedDate(tomorrow.toISOString().split('T')[0])
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                      selectedDate === new Date(Date.now() + 86400000).toISOString().split('T')[0]
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Tomorrow
+                  </button>
+                </div>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-sm text-gray-500 mt-1">{dateToLocalString(selectedDate)}</p>
+              </div>
+
+              {/* Subject Selection */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-3">Select Subject</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {MOCK_SUBJECTS.map((subject) => (
+                    <button
+                      key={subject.code}
+                      onClick={() => {
+                        setSelectedSubjectForPlan(subject)
+                        setSelectedPaper(null)
+                        setSelectedTopics([])
+                      }}
+                      className={`p-3 rounded-lg border-2 font-medium transition ${
+                        selectedSubjectForPlan?.code === subject.code
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300'
+                      }`}
+                    >
+                      {subject.name} ({subject.code})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Activity Type - Show before paper/topics for full-paper */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-3">Activity Type</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { value: 'revision', label: '📖 Revision' },
+                    { value: 'topical', label: '📋 Topical Past Papers' },
+                    { value: 'practice-questions', label: '❓ Practice Questions' },
+                    { value: 'full-paper', label: '📝 Full Past Paper' }
+                  ].map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => {
+                        setActivityType(type.value as 'revision' | 'topical' | 'practice-questions' | 'full-paper')
+                        if (type.value !== 'full-paper') setSelectedTopics([])
+                      }}
+                      className={`p-3 rounded-lg border-2 font-medium transition text-sm ${
+                        activityType === type.value
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paper Selection - For Full Paper or Topics */}
+              {selectedSubjectForPlan && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Select Paper {activityType === 'full-paper' ? '(Final)' : ''}
+                  </label>
+                  <div className="space-y-2">
+                    {selectedSubjectForPlan.papers.map((paper) => (
+                      <button
+                        key={paper.code}
+                        onClick={() => {
+                          setSelectedPaper(paper.code)
+                          if (activityType !== 'full-paper') setSelectedTopics([])
+                        }}
+                        className={`w-full p-3 rounded-lg border-2 font-medium transition text-left ${
+                          selectedPaper === paper.code
+                            ? 'border-blue-600 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300'
+                        }`}
                       >
-                        {/* Subjects for the Day */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <h4 className="font-semibold text-gray-900">{subject.subjectName}</h4>
-                            {(subject as any).paperCodes && (subject as any).paperCodes.length > 0 && (
-                              <p className="text-xs text-gray-600 mt-1">
-                                {(subject as any).paperCodes.join(', ')}
-                              </p>
-                            )}
-                          </div>
-                          <span className={`text-xs font-medium px-2 py-1 rounded whitespace-nowrap ${
-                            subject.activity === 'revision'
-                              ? 'bg-blue-100 text-blue-700'
-                              : subject.activity === 'topical-past-paper'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-red-100 text-red-700'
-                          }`}>
-                            {subject.activity === 'revision'
-                              ? '📖 Revision'
-                              : subject.activity === 'topical-past-paper'
-                              ? '📋 Topical Past Papers'
-                              : '📝 Full Paper'}
-                          </span>
-                        </div>
-
-                        {/* Topics with Checkboxes */}
-                        {Array.isArray(subject.topics) && subject.topics.length > 0 ? (
-                          <div className="space-y-2">
-                            {subject.topics.map((topic, tidx) => {
-                              const topicName = typeof topic === 'string' ? topic : (topic as any)?.name || topic
-                              const paperName = typeof topic === 'object' ? (topic as any)?.paperName : ''
-                              const isCompleted = typeof topic === 'object' ? (topic as any)?.completed || false : false
-                              const pastPaperStarted = typeof topic === 'object' ? (topic as any)?.pastPaperStarted || false : false
-                              const reRevisionDone = typeof topic === 'object' ? (topic as any)?.reRevisionDone || false : false
-                              const isSyncing = topicUpdating === `${(subject as any).taskId}-${topicName}`
-                              
-                              return (
-                                <div key={tidx} className="flex items-start gap-3">
-                                  <input
-                                    type="checkbox"
-                                    checked={isCompleted}
-                                    onChange={() => {
-                                      if ((subject as any).taskId) {
-                                        handleToggleTopic((subject as any).taskId, topicName, isCompleted)
-                                      }
-                                    }}
-                                    disabled={isSyncing}
-                                    className="mt-1 w-4 h-4 cursor-pointer flex-shrink-0 disabled:opacity-60"
-                                  />
-                                  <div className="flex-1">
-                                    <span className={`text-sm py-1 block ${isCompleted ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                                      {topicName}{paperName ? ` (${paperName})` : ''}
-                                    </span>
-                                    {/* Show past paper and re-revision status if topic is completed */}
-                                    {isCompleted && (
-                                      <div className="flex gap-2 mt-1">
-                                        {pastPaperStarted && (
-                                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">✓ Past Paper Started</span>
-                                        )}
-                                        {reRevisionDone && (
-                                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">✓ Re-Revised</span>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-gray-600 italic">No specific topics assigned</p>
-                        )}
-
-                        {subject.description && (
-                          <p className="text-xs text-gray-600 mt-3 pt-3 border-t border-gray-200">
-                            {subject.description}
-                          </p>
-                        )}
-                      </div>
+                        <span className="font-semibold">{paper.code}</span> - {paper.name}
+                      </button>
                     ))}
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+              )}
 
-      {/* Today's Sessions - Only show if OLD format */}
-      {!data.planData && data.todayTasks && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today&apos;s Sessions</h2>
-          <p className="text-sm text-gray-600 mb-4">{today}</p>
-          
-          {data.todayTasks.length === 0 ? (
-            <div className="bg-white rounded-lg p-8 shadow-sm border border-gray-200 text-center">
-              <p className="text-gray-500">No tasks scheduled for today. Well done! 🎉</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {data.todayTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className={`rounded-lg p-5 shadow-sm border border-gray-200 transition ${
-                    task.completed ? 'bg-gray-50 opacity-60' : 'bg-white hover:shadow-md'
-                  } ${sessionColors(task.sessionSlot)}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={task.completed}
-                      onChange={() => handleToggleTask(task.id, task.completed)}
-                      disabled={topicUpdating === task.id}
-                      className="mt-1 w-5 h-5 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{sessionLabel(task.sessionSlot)}</p>
-                      <div className="mt-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default}`}>
-                          {task.subjectName}
-                        </span>
-                      </div>
-                      <p className={`text-sm mt-3 ${task.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                        {task.taskDesc}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )
-        }
-        </div>
-      )}
-
-      {/* Weekly Overview - Only show if OLD format */}
-      {!data.planData && data.weekTasks && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📅 This Week</h2>
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 overflow-x-auto">
-            <div className="grid grid-cols-7 gap-3 min-w-full">
-              {dayNames.map((day, idx) => {
-                const date = new Date(firstDay)
-                date.setDate(date.getDate() + idx)
-                const dateStr = date.toISOString().split('T')[0]
-                const dayTasks = weekDays[dateStr] || []
-                const isToday = dateStr === new Date().toISOString().split('T')[0]
-
-                return (
-                  <div
-                    key={day}
-                    className={`p-4 rounded-lg border-2 ${
-                      isToday ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <p className="font-semibold text-gray-900">{day}</p>
-                    <p className="text-sm text-gray-600">{date.getDate()}</p>
-                    <div className="mt-3 space-y-2">
-                      {dayTasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className={`w-3 h-3 rounded-full ${
-                            SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default
-                          }`}
-                          title={task.subjectName}
-                        />
+              {/* Topic Selection - Hide for full-paper */}
+              {selectedSubjectForPlan && selectedPaper && activityType !== 'full-paper' && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">Select Topics</label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {selectedSubjectForPlan.papers
+                      .find((p) => p.code === selectedPaper)
+                      ?.topics.map((topic) => (
+                        <label key={topic} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedTopics.includes(topic)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTopics([...selectedTopics, topic])
+                              } else {
+                                setSelectedTopics(selectedTopics.filter((t) => t !== topic))
+                              }
+                            }}
+                            className="w-4 h-4 cursor-pointer"
+                          />
+                          <span className="text-gray-700">{topic}</span>
+                        </label>
                       ))}
-                    </div>
                   </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Progress Stats */}
-      {data.stats && (
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">📊 Overall Progress</h2>
-          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-            <div className="flex items-center gap-6">
-              <div>
-                <div className="text-5xl font-bold text-blue-600">{data.stats.completionPercent}%</div>
-                <p className="text-gray-600 mt-1">Plan Completion</p>
-              </div>
-              <div className="flex-1">
-                <div className="bg-gray-200 rounded-full h-4 overflow-hidden">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-full transition-all"
-                    style={{ width: `${data.stats.completionPercent}%` }}
-                  />
                 </div>
-                <p className="text-sm text-gray-600 mt-2">
-                  {data.stats.completedTasks} of {data.stats.totalTasks} tasks completed
-                </p>
+              )}
+
+              {/* Submit */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    setShowPlanModal(false)
+                    resetPlanForm()
+                  }}
+                  className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddPlan}
+                  disabled={!selectedSubjectForPlan || submittingPlan}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-60 text-white font-semibold rounded-lg transition"
+                >
+                  {submittingPlan ? 'Creating...' : 'Create Plan'}
+                </button>
               </div>
             </div>
           </div>
