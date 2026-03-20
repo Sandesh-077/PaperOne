@@ -667,8 +667,8 @@ export default function PlannerPage() {
                       {task.taskDesc}
                     </p>
                   </div>
+                </div>
               </div>
-            </div>
             ))}
           </div>
         )}
