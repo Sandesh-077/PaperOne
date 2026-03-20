@@ -100,6 +100,7 @@ const SUBJECT_COLORS: Record<string, string> = {
   'default': 'bg-gray-100 text-gray-700'
 }
 
+// Daily planner page component for revision tracking
 export default function PlannerPage() {
   const { data: session } = useSession()
   const [data, setData] = useState<PlanData | null>(null)
