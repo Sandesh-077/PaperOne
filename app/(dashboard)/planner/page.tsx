@@ -394,7 +394,7 @@ export default function PlannerPage() {
           onClick={handleGenerateRecoveryPlan}
           disabled={generatingRecovery}
           className="px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white font-medium rounded-lg transition text-sm"
-          title="Generate a recovery plan if you've missed topics"
+          title="Generate a recovery plan if you&apos;ve missed topics"
         >
           {generatingRecovery ? 'Generating...' : '🎯 Generate Recovery Plan'}
         </button>
@@ -632,7 +632,7 @@ export default function PlannerPage() {
       {/* Today's Sessions - Only show if OLD format */}
       {!data.planData && data.todayTasks && (
         <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today's Sessions</h2>
+          <h2 className="text-lg font-bold text-gray-900 mb-2">📚 Today&apos;s Sessions</h2>
           <p className="text-sm text-gray-600 mb-4">{today}</p>
           
           {data.todayTasks.length === 0 ? (
