@@ -304,7 +304,9 @@ export default function EnglishTrainerPage() {
                   <p className="text-gray-600 mb-6">Start your personalized grammar and vocabulary lesson</p>
                 </div>
                 <button
-                  onClick={startLesson}
+                  onClick={() => {
+                    startLesson()
+                  }}
                   disabled={generatingLesson}
                   className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
                 >
