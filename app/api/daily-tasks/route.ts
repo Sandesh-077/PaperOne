@@ -65,3 +65,48 @@ export async function GET(req: Request) {
     )
   }
 }
+
+export async function DELETE(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const prismaAny = prisma as any
+    const body = await req.json().catch(() => ({}))
+    const id = typeof body?.id === 'string' ? body.id : null
+    const ids = Array.isArray(body?.ids) ? body.ids.filter((x: unknown) => typeof x === 'string') : []
+    const deleteAll = body?.all === true
+
+    if (deleteAll) {
+      const result = await prismaAny.dailyTask.deleteMany({ where: { userId: user.id } })
+      return NextResponse.json({ success: true, deletedCount: result.count })
+    }
+
+    if (ids.length > 0) {
+      const result = await prismaAny.dailyTask.deleteMany({
+        where: {
+          userId: user.id,
+          id: { in: ids }
+        }
+      })
+      return NextResponse.json({ success: true, deletedCount: result.count })
+    }
+
+    if (id) {
+      // Idempotent delete: return success even if record is already gone.
+      const result = await prismaAny.dailyTask.deleteMany({ where: { userId: user.id, id } })
+      return NextResponse.json({ success: true, deletedCount: result.count })
+    }
+
+    return NextResponse.json({ error: 'Provide one of: { id }, { ids }, or { all: true }' }, { status: 400 })
+  } catch (error) {
+    console.error('Error deleting daily tasks:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete daily tasks' },
+      { status: 500 }
+    )
+  }
+}

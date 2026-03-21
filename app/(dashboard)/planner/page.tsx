@@ -275,7 +275,11 @@ export default function PlannerPage() {
   const handleDeleteTask = async (taskId: string) => {
     if (!confirm('Delete this plan?')) return
     try {
-      const response = await fetch(`/api/daily-tasks/${taskId}`, { method: 'DELETE' })
+      const response = await fetch('/api/daily-tasks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId })
+      })
       if (response.ok) {
         await fetchTasks()
       }
@@ -288,10 +292,11 @@ export default function PlannerPage() {
     if (!confirm('Delete ALL plans? This cannot be undone.')) return
     try {
       setSubmittingPlan(true)
-      // Delete all tasks one by one
-      for (const task of tasks) {
-        await fetch(`/api/daily-tasks/${task.id}`, { method: 'DELETE' })
-      }
+      await fetch('/api/daily-tasks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true })
+      })
       await fetchTasks()
     } catch (err) {
       console.error('Failed to delete all tasks:', err)
