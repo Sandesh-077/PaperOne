@@ -90,16 +90,26 @@ export default function PlannerPage() {
     try {
       // Fetch exams
       const examsRes = await fetch('/api/exam-entries')
-      const examsData = examsRes.ok ? await examsRes.json() : []
+      const examsPayload = examsRes.ok ? await examsRes.json() : []
+      const examsData = Array.isArray(examsPayload)
+        ? examsPayload
+        : Array.isArray(examsPayload?.entries)
+          ? examsPayload.entries
+          : []
 
       // Fetch topics
       const topicsRes = await fetch('/api/paper-topics')
-      const topicsData = topicsRes.ok ? await topicsRes.json() : { topics: [] }
+      const topicsPayload = topicsRes.ok ? await topicsRes.json() : { topics: [] }
+      const topicsData = Array.isArray(topicsPayload)
+        ? topicsPayload
+        : Array.isArray(topicsPayload?.topics)
+          ? topicsPayload.topics
+          : []
 
       // Group topics by subject and paper
       const subjectMap: Record<string, Subject> = {}
 
-      topicsData.topics?.forEach((topic: PaperTopic) => {
+      topicsData.forEach((topic: PaperTopic) => {
         if (!subjectMap[topic.subject]) {
           // Find exam date for this subject
           const exam = examsData.find((e: any) => e.subject === topic.subject)
