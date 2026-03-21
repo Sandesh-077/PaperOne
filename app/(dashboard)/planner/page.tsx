@@ -24,6 +24,8 @@ interface DailyTask {
   subject: string
   subjectName: string
   topicName?: string
+  topics?: Array<{ name: string; paperCode?: string; completed?: boolean }> | null
+  completedTopics?: string[] | null
   activity?: string
   taskDesc: string
   completed: boolean
@@ -73,10 +75,30 @@ export default function PlannerPage() {
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedSubjectForPlan, setSelectedSubjectForPlan] = useState<Subject | null>(null)
-  const [selectedPaper, setSelectedPaper] = useState<string | null>(null)
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const [selectedPapers, setSelectedPapers] = useState<string[]>([])
+  const [selectedTopicKeys, setSelectedTopicKeys] = useState<string[]>([])
   const [activityType, setActivityType] = useState<'revision' | 'topical' | 'practice-questions' | 'full-paper'>('revision')
   const [submittingPlan, setSubmittingPlan] = useState(false)
+
+  const selectedTopics = useMemo(() => {
+    if (!selectedSubjectForPlan || selectedTopicKeys.length === 0) return [] as Array<{ name: string; paperCode?: string; completed?: boolean }>
+
+    const selectedSet = new Set(selectedTopicKeys)
+    const allTopics = selectedSubjectForPlan.papers.flatMap((paper) =>
+      paper.topics.map((topic) => ({
+        key: `${paper.code}::${topic.topicName}`,
+        name: topic.topicName,
+        paperCode: paper.code,
+        completed: false
+      }))
+    )
+
+    return allTopics.filter((topic) => selectedSet.has(topic.key)).map(({ name, paperCode, completed }) => ({
+      name,
+      paperCode,
+      completed
+    }))
+  }, [selectedSubjectForPlan, selectedTopicKeys])
 
   useEffect(() => {
     if (session) {
@@ -235,35 +257,70 @@ export default function PlannerPage() {
   }
 
   const handleAddPlan = async () => {
-    if (!selectedSubjectForPlan || (!selectedTopics.length && activityType !== 'full-paper')) {
-      alert('Please select subject and at least one topic')
+    if (!selectedSubjectForPlan) {
+      alert('Please select a subject')
+      return
+    }
+
+    if (selectedPapers.length === 0) {
+      alert('Please select at least one paper')
+      return
+    }
+
+    if (activityType !== 'full-paper' && selectedTopics.length === 0) {
+      alert('Please select at least one topic')
       return
     }
 
     setSubmittingPlan(true)
     try {
-      const taskDesc = activityType === 'full-paper' 
-        ? `${selectedPaper} - Full Past Paper` 
-        : `${selectedTopics.join(', ')} - ${activityType.replace('-', ' ')}`
+      if (activityType === 'full-paper') {
+        for (const paperCode of selectedPapers) {
+          const response = await fetch('/api/daily-tasks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              date: selectedDate,
+              subject: selectedSubjectForPlan.code,
+              subjectName: selectedSubjectForPlan.name,
+              topicName: paperCode,
+              activity: activityType,
+              taskDesc: `${paperCode} - Full Past Paper`,
+              taskType: 'PastPaper'
+            })
+          })
 
-      const response = await fetch('/api/daily-tasks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          date: selectedDate,
-          subject: selectedSubjectForPlan.code,
-          subjectName: selectedSubjectForPlan.name,
-          topicName: activityType === 'full-paper' ? selectedPaper : selectedTopics[0],
-          activity: activityType,
-          taskDesc,
-          taskType: activityType === 'revision' ? 'Revision' : 'PastPaper'
+          if (!response.ok) {
+            const err = await response.json().catch(() => null)
+            alert(err?.error || 'Failed to create plan')
+            return
+          }
+        }
+      } else {
+        const topicNames = selectedTopics.map((topic) =>
+          topic.paperCode ? `${topic.paperCode}: ${topic.name}` : topic.name
+        )
+        const response = await fetch('/api/daily-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            date: selectedDate,
+            subject: selectedSubjectForPlan.code,
+            subjectName: selectedSubjectForPlan.name,
+            topicName: selectedTopics[0]?.name,
+            topics: selectedTopics,
+            completedTopics: [],
+            activity: activityType,
+            taskDesc: `${topicNames.join(', ')} - ${activityType.replace('-', ' ')}`,
+            taskType: activityType === 'revision' ? 'Revision' : 'PastPaper'
+          })
         })
-      })
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => null)
-        alert(err?.error || 'Failed to create plan')
-        return
+        if (!response.ok) {
+          const err = await response.json().catch(() => null)
+          alert(err?.error || 'Failed to create plan')
+          return
+        }
       }
 
       alert('✓ Plan added successfully!')
@@ -281,9 +338,25 @@ export default function PlannerPage() {
   const resetPlanForm = () => {
     setSelectedDate(new Date().toISOString().split('T')[0])
     setSelectedSubjectForPlan(null)
-    setSelectedPaper(null)
-    setSelectedTopics([])
+    setSelectedPapers([])
+    setSelectedTopicKeys([])
     setActivityType('revision')
+  }
+
+  const handleToggleTopic = async (taskId: string, topicName: string, completed: boolean, paperCode?: string) => {
+    try {
+      const response = await fetch(`/api/daily-tasks/${taskId}/topic-complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicName, paperCode, completed: !completed })
+      })
+
+      if (response.ok) {
+        await fetchTasks()
+      }
+    } catch (err) {
+      console.error('Failed to update topic:', err)
+    }
   }
 
   const handleToggleTask = async (taskId: string, currentCompleted: boolean) => {
@@ -340,6 +413,26 @@ export default function PlannerPage() {
     return tasks.filter(t => t.date.split('T')[0] === today)
   }
 
+  const getTaskTopics = (task: DailyTask) => {
+    if (Array.isArray(task.topics) && task.topics.length > 0) {
+      const completedTopics = Array.isArray(task.completedTopics) ? task.completedTopics : []
+      return task.topics.map((topic) => ({
+        name: topic.name,
+        paperCode: topic.paperCode,
+        completed:
+          completedTopics.includes(topic.name) ||
+          (topic.paperCode ? completedTopics.includes(`${topic.paperCode}::${topic.name}`) : false) ||
+          !!topic.completed
+      }))
+    }
+
+    if (task.topicName) {
+      return [{ name: task.topicName, completed: task.completed }]
+    }
+
+    return [] as Array<{ name: string; paperCode?: string; completed?: boolean }>
+  }
+
   const getUpcomingTasks = () => {
     const today = new Date().toISOString().split('T')[0]
     return tasks.filter(t => t.date.split('T')[0] > today).slice(0, 7)
@@ -360,6 +453,15 @@ export default function PlannerPage() {
 
   const todayTasks = getTodayTasks()
   const upcomingTasks = getUpcomingTasks()
+  const todayBySubject = Object.values(
+    todayTasks.reduce((acc, task) => {
+      if (!acc[task.subject]) {
+        acc[task.subject] = { subject: task.subject, subjectName: task.subjectName, tasks: [] as DailyTask[] }
+      }
+      acc[task.subject].tasks.push(task)
+      return acc
+    }, {} as Record<string, { subject: string; subjectName: string; tasks: DailyTask[] }>)
+  )
 
   return (
     <div className="space-y-8">
@@ -448,38 +550,69 @@ export default function PlannerPage() {
             <p className="text-sm text-gray-400 mt-1">Click &quot;Add Plan&quot; to create your first study session</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {todayTasks.map((task) => (
+          <div className="space-y-4">
+            {todayBySubject.map((group) => (
               <div
-                key={task.id}
-                className={`rounded-lg p-5 border-l-4 border-blue-500 shadow-sm transition ${
-                  task.completed ? 'bg-gray-50 opacity-70' : 'bg-white hover:shadow-md'
-                }`}
+                key={group.subject}
+                className="rounded-xl border border-gray-200 bg-white shadow-sm"
               >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={task.completed}
-                    onChange={() => handleToggleTask(task.id, task.completed)}
-                    className="mt-1 w-5 h-5 cursor-pointer"
-                  />
-                  <div className="flex-1">
-                    <span className={`text-xs font-medium px-2 py-1 rounded ${SUBJECT_COLORS[task.subject] || SUBJECT_COLORS.default}`}>
-                      {task.subjectName}
-                    </span>
-                    <p className={`text-sm font-semibold mt-2 ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                      {task.taskDesc}
-                    </p>
-                    {task.activity && (
-                      <p className="text-xs text-gray-500 mt-1">Type: {task.activity.replace('-', ' ')}</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDeleteTask(task.id)}
-                    className="text-gray-400 hover:text-red-500 transition text-sm"
-                  >
-                    ✕
-                  </button>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${SUBJECT_COLORS[group.subject] || SUBJECT_COLORS.default}`}>
+                    {group.subjectName} ({group.subject})
+                  </span>
+                  <p className="text-xs text-gray-500">{group.tasks.length} task{group.tasks.length !== 1 ? 's' : ''}</p>
+                </div>
+                <div className="p-4 space-y-3">
+                  {group.tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`rounded-lg p-4 border border-gray-100 transition ${
+                        task.completed ? 'bg-gray-50 opacity-75' : 'bg-white hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => handleToggleTask(task.id, task.completed)}
+                          className="mt-1 w-5 h-5 cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <p className={`text-sm font-semibold ${task.completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                            {task.taskDesc}
+                          </p>
+                          {task.activity && (
+                            <p className="text-xs text-gray-500 mt-1">Type: {task.activity.replace('-', ' ')}</p>
+                          )}
+
+                          {getTaskTopics(task).length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {getTaskTopics(task).map((topic) => (
+                                <label key={`${task.id}-${topic.paperCode || 'paper'}-${topic.name}`} className="flex items-center gap-2 text-sm text-gray-700">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!topic.completed}
+                                    onChange={() => handleToggleTopic(task.id, topic.name, !!topic.completed, topic.paperCode)}
+                                    className="w-4 h-4 cursor-pointer"
+                                  />
+                                  <span className={topic.completed ? 'line-through text-gray-400' : ''}>
+                                    {topic.paperCode ? `${topic.paperCode}: ` : ''}
+                                    {topic.name}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="text-gray-400 hover:text-red-500 transition text-sm"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
@@ -595,8 +728,8 @@ export default function PlannerPage() {
                       key={subject.code}
                       onClick={() => {
                         setSelectedSubjectForPlan(subject)
-                        setSelectedPaper(null)
-                        setSelectedTopics([])
+                        setSelectedPapers([])
+                        setSelectedTopicKeys([])
                       }}
                       className={`w-full p-3 rounded-lg border-2 font-medium transition text-left flex justify-between items-center ${
                         selectedSubjectForPlan?.code === subject.code
@@ -629,7 +762,7 @@ export default function PlannerPage() {
                       key={type.value}
                       onClick={() => {
                         setActivityType(type.value as 'revision' | 'topical' | 'practice-questions' | 'full-paper')
-                        if (type.value !== 'full-paper') setSelectedTopics([])
+                        if (type.value === 'full-paper') setSelectedTopicKeys([])
                       }}
                       className={`p-3 rounded-lg border-2 font-medium transition text-sm ${
                         activityType === type.value
@@ -647,58 +780,75 @@ export default function PlannerPage() {
               {selectedSubjectForPlan && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Select Paper {activityType === 'full-paper' ? '(Final)' : ''}
+                    Select Paper{selectedPapers.length !== 1 ? 's' : ''} {activityType === 'full-paper' ? '(Final)' : ''}
                   </label>
                   <div className="space-y-2">
                     {selectedSubjectForPlan.papers.map((paper) => (
-                      <button
+                      <label
                         key={paper.code}
-                        onClick={() => {
-                          setSelectedPaper(paper.code)
-                          if (activityType !== 'full-paper') setSelectedTopics([])
-                        }}
-                        className={`w-full p-3 rounded-lg border-2 font-medium transition text-left ${
-                          selectedPaper === paper.code
+                        className={`w-full p-3 rounded-lg border-2 font-medium transition text-left flex items-center gap-3 ${
+                          selectedPapers.includes(paper.code)
                             ? 'border-blue-600 bg-blue-50 text-blue-700'
                             : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300'
                         }`}
                       >
+                        <input
+                          type="checkbox"
+                          checked={selectedPapers.includes(paper.code)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedPapers((prev) => [...prev, paper.code])
+                            } else {
+                              setSelectedPapers((prev) => prev.filter((code) => code !== paper.code))
+                              setSelectedTopicKeys((prev) => prev.filter((key) => !key.startsWith(`${paper.code}::`)))
+                            }
+                          }}
+                          className="w-4 h-4 cursor-pointer accent-blue-600"
+                        />
                         <span className="font-semibold">{paper.code}</span> - {paper.name}
-                      </button>
+                      </label>
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Topic Selection - Hide for full-paper */}
-              {selectedSubjectForPlan && selectedPaper && activityType !== 'full-paper' && (
+              {selectedSubjectForPlan && selectedPapers.length > 0 && activityType !== 'full-paper' && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">Select Topics</label>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {selectedSubjectForPlan.papers
-                      .find((p) => p.code === selectedPaper)
-                      ?.topics.map((topic) => (
-                        <label
-                          key={topic.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-blue-50 cursor-pointer transition"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedTopics.includes(topic.topicName)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedTopics([...selectedTopics, topic.topicName])
-                              } else {
-                                setSelectedTopics(selectedTopics.filter((t) => t !== topic.topicName))
-                              }
-                            }}
-                            className="w-4 h-4 cursor-pointer accent-blue-600"
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{topic.topicName}</div>
-                            <div className="text-xs text-gray-500">Topic {topic.topicOrder}</div>
-                          </div>
-                        </label>
+                      .filter((paper) => selectedPapers.includes(paper.code))
+                      .map((paper) => (
+                        <div key={paper.code} className="space-y-2">
+                          <div className="text-xs font-semibold text-gray-500 mt-2">Paper {paper.code}</div>
+                          {paper.topics.map((topic) => {
+                            const topicKey = `${paper.code}::${topic.topicName}`
+                            return (
+                              <label
+                                key={topic.id}
+                                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-blue-50 cursor-pointer transition"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTopicKeys.includes(topicKey)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTopicKeys((prev) => [...prev, topicKey])
+                                    } else {
+                                      setSelectedTopicKeys((prev) => prev.filter((key) => key !== topicKey))
+                                    }
+                                  }}
+                                  className="w-4 h-4 cursor-pointer accent-blue-600"
+                                />
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">{topic.topicName}</div>
+                                  <div className="text-xs text-gray-500">Topic {topic.topicOrder}</div>
+                                </div>
+                              </label>
+                            )
+                          })}
+                        </div>
                       ))}
                   </div>
                   {selectedTopics.length > 0 && (
@@ -724,7 +874,7 @@ export default function PlannerPage() {
                 </button>
                 <button
                   onClick={handleAddPlan}
-                  disabled={!selectedSubjectForPlan || submittingPlan}
+                  disabled={!selectedSubjectForPlan || submittingPlan || selectedPapers.length === 0}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-60 text-white font-semibold rounded-lg transition"
                 >
                   {submittingPlan ? 'Creating...' : 'Create Plan'}

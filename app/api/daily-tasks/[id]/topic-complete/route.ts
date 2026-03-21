@@ -12,7 +12,7 @@ export async function PATCH(
   if (!session?.user?.email) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 })
 
   try {
-    const { topicName, completed } = await request.json()
+    const { topicName, paperCode, completed } = await request.json()
     if (!topicName) return new Response(JSON.stringify({ error: 'Topic name required' }), { status: 400 })
 
     const user = await prisma.user.findUnique({ where: { email: session.user.email } })
@@ -29,16 +29,23 @@ export async function PATCH(
 
     // Update topics array to mark topic as complete
     const topics = (task.topics || []) as Array<{ name: string; paperCode?: string; completed?: boolean }>
+    const matchesTopic = (t: { name: string; paperCode?: string; completed?: boolean }) => {
+      if (t.name !== topicName) return false
+      if (paperCode) return t.paperCode === paperCode
+      return true
+    }
+
     const updatedTopics = topics.map(t => ({
       ...t,
-      completed: t.name === topicName ? completed : t.completed
+      completed: matchesTopic(t) ? completed : t.completed
     }))
 
     // Track completed topics
     const completedTopics = (task.completedTopics || []) as string[]
+    const completionKey = paperCode ? `${paperCode}::${topicName}` : topicName
     const newCompletedTopics = completed 
-      ? [...new Set([...completedTopics, topicName])]
-      : completedTopics.filter(t => t !== topicName)
+      ? [...new Set([...completedTopics, completionKey])]
+      : completedTopics.filter(t => t !== completionKey)
 
     const updated = await prismaAny.dailyTask.update({
       where: { id: params.id },
