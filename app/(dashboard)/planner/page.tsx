@@ -109,6 +109,35 @@ export default function PlannerPage() {
       // Group topics by subject and paper
       const subjectMap: Record<string, Subject> = {}
 
+      // Seed subjects from exam entries so subjects show even if no topics were added yet.
+      examsData.forEach((exam: any) => {
+        if (!subjectMap[exam.subject]) {
+          const daysUntil = exam?.examDate
+            ? Math.ceil((new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+            : null
+
+          subjectMap[exam.subject] = {
+            code: exam.subject,
+            name: exam.subjectName || exam.subject,
+            examDate: exam.examDate,
+            daysUntil: daysUntil && daysUntil > -1 ? daysUntil : undefined,
+            papers: []
+          }
+        }
+
+        if (exam.paperCode) {
+          const subject = subjectMap[exam.subject]
+          const hasPaper = subject.papers.some((p) => p.code === exam.paperCode)
+          if (!hasPaper) {
+            subject.papers.push({
+              code: exam.paperCode,
+              name: exam.paperName || exam.paperCode,
+              topics: []
+            })
+          }
+        }
+      })
+
       topicsData.forEach((topic: PaperTopic) => {
         if (!subjectMap[topic.subject]) {
           // Find exam date for this subject
