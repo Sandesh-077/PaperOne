@@ -220,7 +220,10 @@ export default function VocabularyPage() {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
 
-  const learnedCount = dailyWords && Array.isArray(dailyWords) ? dailyWords.filter((w: any) => w.userProgress?.status === 'learned').length : 0
+  // Safely calculate learned count with proper null checks
+  const learnedCount = (dailyWords && Array.isArray(dailyWords) && dailyWords.length > 0) 
+    ? dailyWords.filter((w: any) => w?.userProgress?.status === 'learned').length 
+    : 0
 
   return (
     <div className="space-y-6">
