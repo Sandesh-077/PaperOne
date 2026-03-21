@@ -220,7 +220,7 @@ export default function VocabularyPage() {
     return <div className="flex items-center justify-center h-64">Loading...</div>
   }
 
-  const learnedCount = dailyWords.filter((w: any) => w.userProgress?.status === 'learned').length
+  const learnedCount = dailyWords && Array.isArray(dailyWords) ? dailyWords.filter((w: any) => w.userProgress?.status === 'learned').length : 0
 
   return (
     <div className="space-y-6">
@@ -238,7 +238,7 @@ export default function VocabularyPage() {
       </div>
 
       {/* Today's 5 Words Section */}
-      {dailyWords.length > 0 && (
+      {dailyWords && Array.isArray(dailyWords) && dailyWords.length > 0 && (
         <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg border-2 border-purple-200 p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function VocabularyPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-            {dailyWords.map((word: any) => {
+            {dailyWords && Array.isArray(dailyWords) && dailyWords.map((word: any) => {
               const status = word.userProgress?.status || 'learning'
               const statusColorMap: Record<string, string> = {
                 'learned': 'bg-green-100 border-green-300 text-green-900',
@@ -306,7 +306,7 @@ export default function VocabularyPage() {
           <p className="text-xs text-gray-600 mt-1">Words Mastered Today</p>
         </div>
         <div className="bg-white rounded-lg p-4 border border-gray-200 text-center">
-          <p className="text-2xl font-bold text-blue-600">{vocabulary.length}</p>
+          <p className="text-2xl font-bold text-blue-600">{vocabulary && Array.isArray(vocabulary) ? vocabulary.length : 0}</p>
           <p className="text-xs text-gray-600 mt-1">Total Vocabulary</p>
         </div>
         <div className="bg-white rounded-lg p-4 border border-gray-200 text-center hidden md:block">
@@ -577,7 +577,7 @@ export default function VocabularyPage() {
       <div>
         <h2 className="text-xl font-bold text-gray-900 mb-4">Your Vocabulary</h2>
         <div className="space-y-4">
-        {vocabulary.length === 0 ? (
+        {!vocabulary || !Array.isArray(vocabulary) || vocabulary.length === 0 ? (
           <div className="bg-white p-12 rounded-lg shadow-sm border border-gray-200 text-center">
             <p className="text-gray-500">No vocabulary yet. Start building your word bank!</p>
           </div>
