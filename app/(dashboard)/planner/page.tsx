@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface ExamCountdown {
@@ -29,10 +29,28 @@ interface DailyTask {
   completed: boolean
 }
 
+interface PaperTopic {
+  id: string
+  subject: string
+  subjectName: string
+  paperCode: string
+  paperName: string
+  topicName: string
+  topicOrder: number
+}
+
+interface Paper {
+  code: string
+  name: string
+  topics: PaperTopic[]
+}
+
 interface Subject {
   code: string
   name: string
-  papers: Array<{ code: string; name: string; topics: string[] }>
+  examDate?: string
+  daysUntil?: number
+  papers: Paper[]
 }
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -44,34 +62,6 @@ const SUBJECT_COLORS: Record<string, string> = {
   'default': 'bg-gray-100 text-gray-700'
 }
 
-// Mock subjects data - would come from API in production
-const MOCK_SUBJECTS: Subject[] = [
-  {
-    code: '9702',
-    name: 'Chemistry',
-    papers: [
-      { code: '9702/21', name: 'Paper 2.1', topics: ['Atomic Structure', 'Bonding', 'Thermodynamics', 'Kinetics', 'Equilibrium'] },
-      { code: '9702/22', name: 'Paper 2.2', topics: ['Atomic Structure', 'Bonding', 'Thermodynamics', 'Kinetics', 'Equilibrium'] }
-    ]
-  },
-  {
-    code: '9701',
-    name: 'Physics',
-    papers: [
-      { code: '9701/21', name: 'Paper 2.1', topics: ['Mechanics', 'Waves', 'Thermodynamics', 'Fields'] },
-      { code: '9701/22', name: 'Paper 2.2', topics: ['Mechanics', 'Waves', 'Thermodynamics', 'Fields'] }
-    ]
-  },
-  {
-    code: '9709',
-    name: 'Biology',
-    papers: [
-      { code: '9709/21', name: 'Paper 2.1', topics: ['Cell Biology', 'Genetics', 'Evolution', 'Ecology'] },
-      { code: '9709/22', name: 'Paper 2.2', topics: ['Cell Biology', 'Genetics', 'Evolution', 'Ecology'] }
-    ]
-  }
-]
-
 // Manual Daily Planner Component
 export default function PlannerPage() {
   const { data: session } = useSession()
@@ -79,6 +69,7 @@ export default function PlannerPage() {
   const [pomodoroStats, setPomodoroStats] = useState<{ totalMinutesThisWeek: number; recentSessions: PomodoroSession[] }>({ totalMinutesThisWeek: 0, recentSessions: [] })
   const [loading, setLoading] = useState(true)
   const [tasks, setTasks] = useState<DailyTask[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedSubjectForPlan, setSelectedSubjectForPlan] = useState<Subject | null>(null)
@@ -89,32 +80,89 @@ export default function PlannerPage() {
 
   useEffect(() => {
     if (session) {
-      fetchExams()
+      fetchExamsAndTopics()
       fetchPomodoroStats()
       fetchTasks()
     }
   }, [session])
 
-  const fetchExams = async () => {
+  const fetchExamsAndTopics = async () => {
     try {
-      const response = await fetch('/api/exam-entries')
-      if (response.ok) {
-        const exams = await response.json()
-        const nextExams = exams
-          .map((exam: any) => ({
-            subject: exam.subject,
-            subjectName: exam.subjectName,
-            paperName: exam.paperName,
-            examDate: exam.examDate,
-            daysUntil: Math.ceil((new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-          }))
-          .filter((exam: ExamCountdown) => exam.daysUntil > -1)
-          .sort((a: ExamCountdown, b: ExamCountdown) => a.daysUntil - b.daysUntil)
-          .slice(0, 3)
-        setExamData({ nextExams })
-      }
+      // Fetch exams
+      const examsRes = await fetch('/api/exam-entries')
+      const examsData = examsRes.ok ? await examsRes.json() : []
+
+      // Fetch topics
+      const topicsRes = await fetch('/api/paper-topics')
+      const topicsData = topicsRes.ok ? await topicsRes.json() : { topics: [] }
+
+      // Group topics by subject and paper
+      const subjectMap: Record<string, Subject> = {}
+
+      topicsData.topics?.forEach((topic: PaperTopic) => {
+        if (!subjectMap[topic.subject]) {
+          // Find exam date for this subject
+          const exam = examsData.find((e: any) => e.subject === topic.subject)
+          const examDate = exam?.examDate
+          const daysUntil = exam
+            ? Math.ceil((new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+            : null
+
+          subjectMap[topic.subject] = {
+            code: topic.subject,
+            name: topic.subjectName,
+            examDate,
+            daysUntil: daysUntil && daysUntil > -1 ? daysUntil : undefined,
+            papers: []
+          }
+        }
+
+        const subject = subjectMap[topic.subject]
+        let paper = subject.papers.find((p) => p.code === topic.paperCode)
+        if (!paper) {
+          paper = { code: topic.paperCode, name: topic.paperName, topics: [] }
+          subject.papers.push(paper)
+        }
+
+        if (!paper.topics.find((t) => t.topicName === topic.topicName)) {
+          paper.topics.push(topic)
+        }
+      })
+
+      // Sort papers by code within each subject
+      Object.values(subjectMap).forEach((subject) => {
+        subject.papers.sort((a, b) => a.code.localeCompare(b.code))
+        // Sort topics within each paper by topicOrder
+        subject.papers.forEach((paper) => {
+          paper.topics.sort((a, b) => a.topicOrder - b.topicOrder)
+        })
+      })
+
+      const sortedSubjects = Object.values(subjectMap).sort((a, b) => {
+        // Show subjects with exams first, sorted by days until
+        if (a.daysUntil !== undefined && b.daysUntil !== undefined) return a.daysUntil - b.daysUntil
+        if (a.daysUntil !== undefined) return -1
+        if (b.daysUntil !== undefined) return 1
+        return a.name.localeCompare(b.name)
+      })
+
+      setSubjects(sortedSubjects)
+
+      // Set exam countdowns
+      const nextExams = examsData
+        .map((exam: any) => ({
+          subject: exam.subject,
+          subjectName: exam.subjectName,
+          paperName: exam.paperName,
+          examDate: exam.examDate,
+          daysUntil: Math.ceil((new Date(exam.examDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        }))
+        .filter((exam: ExamCountdown) => exam.daysUntil > -1)
+        .sort((a: ExamCountdown, b: ExamCountdown) => a.daysUntil - b.daysUntil)
+        .slice(0, 3)
+      setExamData({ nextExams })
     } catch (err) {
-      console.error('Failed to fetch exams:', err)
+      console.error('Failed to fetch exams and topics:', err)
     } finally {
       setLoading(false)
     }
@@ -226,6 +274,23 @@ export default function PlannerPage() {
     }
   }
 
+  const handleDeleteAllPlans = async () => {
+    if (!confirm('Delete ALL plans? This cannot be undone.')) return
+    try {
+      setSubmittingPlan(true)
+      // Delete all tasks one by one
+      for (const task of tasks) {
+        await fetch(`/api/daily-tasks/${task.id}`, { method: 'DELETE' })
+      }
+      await fetchTasks()
+    } catch (err) {
+      console.error('Failed to delete all tasks:', err)
+      alert('Failed to delete all plans')
+    } finally {
+      setSubmittingPlan(false)
+    }
+  }
+
   const getTodayTasks = () => {
     const today = new Date().toISOString().split('T')[0]
     return tasks.filter(t => t.date.split('T')[0] === today)
@@ -260,12 +325,23 @@ export default function PlannerPage() {
           <h1 className="text-3xl font-bold text-gray-900">Daily Planner</h1>
           <p className="text-gray-600 mt-1">Create your personalized study schedule</p>
         </div>
-        <button
-          onClick={() => setShowPlanModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition shadow-md"
-        >
-          + Add Plan
-        </button>
+        <div className="flex gap-3">
+          {tasks.length > 0 && (
+            <button
+              onClick={handleDeleteAllPlans}
+              disabled={submittingPlan}
+              className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 disabled:opacity-60 text-white font-semibold rounded-lg transition shadow-md"
+            >
+              🗑️ Delete All Plans
+            </button>
+          )}
+          <button
+            onClick={() => setShowPlanModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition shadow-md"
+          >
+            + Add Plan
+          </button>
+        </div>
       </div>
 
       {/* Next Exam Countdowns */}
@@ -469,8 +545,8 @@ export default function PlannerPage() {
               {/* Subject Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-900 mb-3">Select Subject</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {MOCK_SUBJECTS.map((subject) => (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {subjects.map((subject) => (
                     <button
                       key={subject.code}
                       onClick={() => {
@@ -478,13 +554,18 @@ export default function PlannerPage() {
                         setSelectedPaper(null)
                         setSelectedTopics([])
                       }}
-                      className={`p-3 rounded-lg border-2 font-medium transition ${
+                      className={`w-full p-3 rounded-lg border-2 font-medium transition text-left flex justify-between items-center ${
                         selectedSubjectForPlan?.code === subject.code
                           ? 'border-blue-600 bg-blue-50 text-blue-700'
                           : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-blue-300'
                       }`}
                     >
-                      {subject.name} ({subject.code})
+                      <span>{subject.name} ({subject.code})</span>
+                      {subject.daysUntil !== undefined && (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">
+                          {subject.daysUntil} days
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -549,27 +630,40 @@ export default function PlannerPage() {
               {selectedSubjectForPlan && selectedPaper && activityType !== 'full-paper' && (
                 <div>
                   <label className="block text-sm font-semibold text-gray-900 mb-3">Select Topics</label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
                     {selectedSubjectForPlan.papers
                       .find((p) => p.code === selectedPaper)
                       ?.topics.map((topic) => (
-                        <label key={topic} className="flex items-center gap-3 p-2 rounded hover:bg-gray-50 cursor-pointer">
+                        <label
+                          key={topic.id}
+                          className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:bg-blue-50 cursor-pointer transition"
+                        >
                           <input
                             type="checkbox"
-                            checked={selectedTopics.includes(topic)}
+                            checked={selectedTopics.includes(topic.topicName)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSelectedTopics([...selectedTopics, topic])
+                                setSelectedTopics([...selectedTopics, topic.topicName])
                               } else {
-                                setSelectedTopics(selectedTopics.filter((t) => t !== topic))
+                                setSelectedTopics(selectedTopics.filter((t) => t !== topic.topicName))
                               }
                             }}
-                            className="w-4 h-4 cursor-pointer"
+                            className="w-4 h-4 cursor-pointer accent-blue-600"
                           />
-                          <span className="text-gray-700">{topic}</span>
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{topic.topicName}</div>
+                            <div className="text-xs text-gray-500">Topic {topic.topicOrder}</div>
+                          </div>
                         </label>
                       ))}
                   </div>
+                  {selectedTopics.length > 0 && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm font-medium text-blue-900">
+                        ✓ {selectedTopics.length} topic{selectedTopics.length !== 1 ? 's' : ''} selected
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
