@@ -85,7 +85,21 @@ export default function EnhancedDashboardPage() {
       
       if (dashResponse.ok) {
         const data = await dashResponse.json()
-        setDashboardData(data)
+        setDashboardData({
+          streaks: {
+            current: Number(data?.streaks?.current ?? 0),
+            daysActive: Number(data?.streaks?.daysActive ?? 0),
+          },
+          thisWeek: {
+            totalHours: Number(data?.thisWeek?.totalHours ?? 0),
+            pastPapers: Number(data?.thisWeek?.pastPapers ?? 0),
+            sessionsCompleted: Number(data?.thisWeek?.sessionsCompleted ?? 0),
+          },
+          topicsNeedingRevision: Array.isArray(data?.topicsNeedingRevision)
+            ? data.topicsNeedingRevision
+            : [],
+          recentSessions: Array.isArray(data?.recentSessions) ? data.recentSessions : [],
+        })
       } else {
         setDashboardData({
           streaks: { current: 0, daysActive: 0 },
@@ -97,22 +111,22 @@ export default function EnhancedDashboardPage() {
       
       if (calendarResponse.ok) {
         const calData = await calendarResponse.json()
-        setActivityCalendar(calData)
+        setActivityCalendar(Array.isArray(calData) ? calData : [])
       }
 
       if (wordsResponse.ok) {
         const wordsData = await wordsResponse.json()
-        setDailyWords(wordsData.words || [])
+        setDailyWords(Array.isArray(wordsData?.words) ? wordsData.words : [])
       }
 
       if (weaknessResponse.ok) {
         const weakData = await weaknessResponse.json()
-        setGrammarWeaknesses(weakData.weaknesses?.slice(0, 3) || [])
+        setGrammarWeaknesses(Array.isArray(weakData?.weaknesses) ? weakData.weaknesses.slice(0, 3) : [])
       }
 
       if (writingResponse.ok) {
         const writingData = await writingResponse.json()
-        if (writingData.submissions && writingData.submissions.length > 0) {
+        if (Array.isArray(writingData?.submissions) && writingData.submissions.length > 0) {
           setRecentWriting(writingData.submissions[0])
         }
       }
@@ -145,7 +159,14 @@ export default function EnhancedDashboardPage() {
     )
   }
 
-  const { streaks, thisWeek, topicsNeedingRevision, recentSessions } = dashboardData
+  const streaks = dashboardData?.streaks ?? { current: 0, daysActive: 0 }
+  const thisWeek = dashboardData?.thisWeek ?? { totalHours: 0, pastPapers: 0, sessionsCompleted: 0 }
+  const topicsNeedingRevision = Array.isArray(dashboardData?.topicsNeedingRevision)
+    ? dashboardData.topicsNeedingRevision
+    : []
+  const recentSessions = Array.isArray(dashboardData?.recentSessions)
+    ? dashboardData.recentSessions
+    : []
 
   return (
     <div className="space-y-8">
