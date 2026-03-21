@@ -534,12 +534,12 @@ export default function VocabularyPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Example Sentences</label>
-              {formData.sentences.map((sentence, index) => (
+              {Array.isArray(formData?.sentences) && formData.sentences.map((sentence, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <textarea
-                    value={sentence}
+                    value={sentence || ''}
                     onChange={(e) => {
-                      const newSentences = [...formData.sentences]
+                      const newSentences = [...(formData?.sentences || [])]
                       newSentences[index] = e.target.value
                       setFormData({ ...formData, sentences: newSentences })
                     }}
@@ -548,7 +548,7 @@ export default function VocabularyPage() {
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
                     placeholder="Use the word in a sentence..."
                   />
-                  {formData.sentences.length > 1 && (
+                  {Array.isArray(formData?.sentences) && formData.sentences.length > 1 && (
                     <button
                       type="button"
                       onClick={() => {
@@ -564,7 +564,7 @@ export default function VocabularyPage() {
               ))}
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, sentences: [...formData.sentences, ''] })}
+                onClick={() => setFormData({ ...formData, sentences: [...(formData?.sentences || []), ''] })}
                 className="text-sm text-green-600 hover:text-green-700"
               >
                 + Add another sentence
