@@ -66,6 +66,95 @@ export async function GET(req: Request) {
   }
 }
 
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const body = await req.json()
+    const {
+      date,
+      subject,
+      subjectName,
+      topicName,
+      activity,
+      taskDesc,
+      taskType,
+      phase,
+      sessionSlot,
+      topics,
+      completedTopics,
+      dayNumber,
+    } = body || {}
+
+    if (!date || !subject || !subjectName || !taskDesc) {
+      return NextResponse.json(
+        { error: 'Missing required fields: date, subject, subjectName, taskDesc' },
+        { status: 400 }
+      )
+    }
+
+    const prismaAny = prisma as any
+
+    let activePlan = await prismaAny.revisionPlan.findFirst({
+      where: { userId: user.id, isActive: true },
+      orderBy: { generatedAt: 'desc' },
+    })
+
+    if (!activePlan) {
+      const planDate = new Date(`${date}T00:00:00Z`)
+      activePlan = await prismaAny.revisionPlan.create({
+        data: {
+          userId: user.id,
+          firstExamDate: planDate,
+          lastExamDate: planDate,
+          studyHoursPerDay: 4,
+          isActive: true,
+          planData: {
+            source: 'manual-planner',
+            createdBy: 'daily-tasks-post',
+          },
+        },
+      })
+    }
+
+    const taskDate = new Date(`${date}T00:00:00Z`)
+    if (Number.isNaN(taskDate.getTime())) {
+      return NextResponse.json({ error: 'Invalid date format' }, { status: 400 })
+    }
+
+    const createdTask = await prismaAny.dailyTask.create({
+      data: {
+        userId: user.id,
+        planId: activePlan.id,
+        date: taskDate,
+        sessionSlot: typeof sessionSlot === 'string' ? sessionSlot : 'subject-wise',
+        subject,
+        subjectName,
+        topicName: typeof topicName === 'string' ? topicName : null,
+        topics: Array.isArray(topics) ? topics : null,
+        completedTopics: Array.isArray(completedTopics) ? completedTopics : null,
+        activity: typeof activity === 'string' ? activity : null,
+        dayNumber: typeof dayNumber === 'number' ? dayNumber : null,
+        taskDesc,
+        taskType: typeof taskType === 'string' ? taskType : 'Revision',
+        phase: typeof phase === 'string' ? phase : 'Manual',
+      },
+    })
+
+    return NextResponse.json({ task: createdTask }, { status: 201 })
+  } catch (error) {
+    console.error('Error creating daily task:', error)
+    return NextResponse.json(
+      { error: 'Failed to create daily task' },
+      { status: 500 }
+    )
+  }
+}
+
 export async function DELETE(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
