@@ -45,7 +45,7 @@ export default function VocabularyPage() {
   const [teachingLoading, setTeachingLoading] = useState(false)
   const [improveLoading, setImproveLoading] = useState(false)
   const [teaching, setTeaching] = useState<WordTeaching | null>(null)
-  const [suggestions, setSuggestions] = useState<VocabularySuggestion[] | null>(null)
+  const [suggestions, setSuggestions] = useState<VocabularySuggestion[]>([])
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     word: '',
@@ -68,10 +68,16 @@ export default function VocabularyPage() {
       const response = await fetch('/api/ai/daily-words')
       if (response.ok) {
         const data = await response.json()
-        setDailyWords(data.words || [])
+        // Safely extract words array
+        const words = Array.isArray(data?.words) ? data.words : Array.isArray(data) ? data : []
+        setDailyWords(words)
+      } else {
+        console.error('Failed to fetch daily words:', response.status)
+        setDailyWords([])
       }
     } catch (error) {
       console.error('Failed to fetch daily words:', error)
+      setDailyWords([])
     }
   }
 
@@ -196,7 +202,7 @@ export default function VocabularyPage() {
 
     setImproveLoading(true)
     setError('')
-    setSuggestions(null)
+    setSuggestions([])
 
     try {
       const response = await fetch('/api/ai/vocabulary', {
@@ -269,27 +275,28 @@ export default function VocabularyPage() {
               const statusColor = statusColorMap[status] || 'bg-gray-100 border-gray-300 text-gray-900'
 
               return (
-                <div key={word.id} className={`p-4 rounded-lg border-2 ${statusColor}`}>
-                  <h3 className="font-bold text-lg mb-1">{word.word}</h3>
-                  <p className="text-xs opacity-75 mb-2 line-clamp-2">{word.definition}</p>
+                <div key={word?.id || Math.random()} className={`p-4 rounded-lg border-2 ${statusColor}`}>
+                  <h3 className="font-bold text-lg mb-1">{word?.word || 'Unknown'}</h3>
+                  <p className="text-xs opacity-75 mb-2 line-clamp-2">{word?.definition || 'No definition'}</p>
                   <div className="flex items-center gap-1 mb-2 text-xs">
-                    <span className="font-semibold">{word.category}</span>
+                    <span className="font-semibold">{word?.category || 'General'}</span>
                     <span>•</span>
-                    <span>Level {word.difficulty}</span>
+                    <span>Level {word?.difficulty || 'N/A'}</span>
                   </div>
                   <div className="flex gap-1 text-lg mb-2">
-                    {Array.from({ length: word.userProgress?.confidenceLevel || 0 }).map((_, i) => (
+                    {Array.from({ length: Math.max(0, word?.userProgress?.confidenceLevel || 0) }).map((_, i) => (
                       <span key={i}>⭐</span>
                     ))}
-                    {Array.from({ length: Math.max(0, 5 - (word.userProgress?.confidenceLevel || 0)) }).map((_, i) => (
+                    {Array.from({ length: Math.max(0, 5 - (word?.userProgress?.confidenceLevel || 0)) }).map((_, i) => (
                       <span key={i} className="opacity-25">☆</span>
                     ))}
                   </div>
                   <button
-                    onClick={() => handleMarkLearned(word.id, word.userProgress?.status)}
+                    onClick={() => handleMarkLearned(word?.id, word?.userProgress?.status)}
                     className="w-full text-xs bg-white bg-opacity-50 hover:bg-opacity-75 py-1 px-2 rounded transition font-semibold"
+                    disabled={!word?.id}
                   >
-                    {word.userProgress?.status === 'learned' ? '✓ Mastered' : 'Mark Learned'}
+                    {word?.userProgress?.status === 'learned' ? '✓ Mastered' : 'Mark Learned'}
                   </button>
                 </div>
               )
@@ -331,7 +338,7 @@ export default function VocabularyPage() {
               setActiveTab('learn')
               setError('')
               setTeaching(null)
-              setSuggestions(null)
+              setSuggestions([])
             }}
             className={`flex-1 px-6 py-4 font-medium transition-colors ${
               activeTab === 'learn'
@@ -346,7 +353,7 @@ export default function VocabularyPage() {
               setActiveTab('improve')
               setError('')
               setTeaching(null)
-              setSuggestions(null)
+              setSuggestions([])
             }}
             className={`flex-1 px-6 py-4 font-medium transition-colors ${
               activeTab === 'improve'
