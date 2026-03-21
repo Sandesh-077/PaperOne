@@ -15,6 +15,7 @@ interface TimerState {
   topic: string
   isRunning: boolean
   isWorkSession: boolean
+  isLongBreak: boolean
   secondsRemaining: number
   cyclesCompleted: number
   totalSessionMinutes: number
@@ -34,6 +35,7 @@ export default function TimerPage() {
     topic: '',
     isRunning: false,
     isWorkSession: true,
+    isLongBreak: false,
     secondsRemaining: 25 * 60,
     cyclesCompleted: 0,
     totalSessionMinutes: 0,
@@ -44,6 +46,7 @@ export default function TimerPage() {
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
+  const phaseEndTimeRef = useRef<number | null>(null)
 
   // Initialize audio context on first user interaction
   const initializeAudioContext = useCallback(() => {
@@ -78,90 +81,158 @@ export default function TimerPage() {
     }
   }, [])
 
+  const getElapsedMinutes = useCallback((startedAt: Date, endedAtMs: number) => {
+    const elapsedMs = Math.max(0, endedAtMs - startedAt.getTime())
+    return Math.max(1, Math.round(elapsedMs / 60000))
+  }, [])
+
+  const transitionToNextPhase = useCallback(
+    (prev: TimerState, endedAtMs: number): TimerState => {
+      playBeep()
+
+      if (prev.isWorkSession) {
+        const newCycles = prev.cyclesCompleted + 1
+        const nextIsLongBreak = newCycles % prev.longBreakAfter === 0
+        const nextSeconds = (nextIsLongBreak ? prev.longBreakMinutes : prev.breakMinutes) * 60
+
+        return {
+          ...prev,
+          cyclesCompleted: newCycles,
+          isWorkSession: false,
+          isLongBreak: nextIsLongBreak,
+          secondsRemaining: nextSeconds,
+          isRunning: prev.autoStartNext,
+        }
+      }
+
+      if (prev.isLongBreak) {
+        const sessionMinutes = getElapsedMinutes(prev.sessionStartTime, endedAtMs)
+        initializeAudioContext()
+
+        return {
+          ...prev,
+          isWorkSession: true,
+          isLongBreak: false,
+          isRunning: false,
+          secondsRemaining: prev.workMinutes * 60,
+          totalSessionMinutes: sessionMinutes,
+          isComplete: true,
+        }
+      }
+
+      return {
+        ...prev,
+        isWorkSession: true,
+        isLongBreak: false,
+        secondsRemaining: prev.workMinutes * 60,
+        isRunning: prev.autoStartNext,
+      }
+    },
+    [getElapsedMinutes, initializeAudioContext, playBeep]
+  )
+
+  const handleStop = useCallback(async () => {
+    const now = Date.now()
+    const currentPhaseTotalSeconds = state.isWorkSession
+      ? state.workMinutes * 60
+      : state.isLongBreak
+      ? state.longBreakMinutes * 60
+      : state.breakMinutes * 60
+
+    const progressed =
+      state.cyclesCompleted > 0 ||
+      state.secondsRemaining < currentPhaseTotalSeconds
+
+    const elapsedMinutes = getElapsedMinutes(state.sessionStartTime, now)
+
+    if (progressed && elapsedMinutes > 0) {
+      try {
+        await fetch('/api/pomodoro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            startedAt: state.sessionStartTime.toISOString(),
+            endedAt: new Date(now).toISOString(),
+            workMinutes: state.workMinutes,
+            breakMinutes: state.breakMinutes,
+            cyclesCompleted: state.cyclesCompleted,
+            subject: state.subject || null,
+            topicName: state.topic || null,
+            status: 'abandoned',
+            totalMinutes: elapsedMinutes,
+          }),
+        })
+      } catch (error) {
+        console.error('Failed to save stopped session:', error)
+      }
+    }
+
+    phaseEndTimeRef.current = null
+    setState(prev => ({
+      ...prev,
+      isRunning: false,
+      isWorkSession: true,
+      isLongBreak: false,
+      secondsRemaining: prev.workMinutes * 60,
+      cyclesCompleted: 0,
+      totalSessionMinutes: 0,
+      sessionStartTime: new Date(now),
+      isComplete: false,
+      showSettings: true,
+    }))
+  }, [
+    getElapsedMinutes,
+    state.breakMinutes,
+    state.cyclesCompleted,
+    state.isLongBreak,
+    state.isWorkSession,
+    state.secondsRemaining,
+    state.sessionStartTime,
+    state.subject,
+    state.topic,
+    state.workMinutes,
+    state.longBreakMinutes,
+  ])
+
   // Timer countdown logic
   useEffect(() => {
-    if (!state.isRunning) return
+    if (!state.isRunning) {
+      phaseEndTimeRef.current = null
+      return
+    }
 
-    intervalRef.current = setInterval(() => {
+    if (!phaseEndTimeRef.current) {
+      phaseEndTimeRef.current = Date.now() + state.secondsRemaining * 1000
+    }
+
+    const tick = () => {
+      const endTime = phaseEndTimeRef.current ?? Date.now()
+      const remainingMs = endTime - Date.now()
+
+      if (remainingMs <= 0) {
+        setState(prev => {
+          const now = Date.now()
+          const next = transitionToNextPhase(prev, now)
+          phaseEndTimeRef.current = next.isRunning ? now + next.secondsRemaining * 1000 : null
+          return next
+        })
+        return
+      }
+
       setState(prev => {
-        let newSeconds = prev.secondsRemaining - 1
-
-        if (newSeconds <= 0) {
-          // Interval complete
-          playBeep()
-
-          if (prev.isWorkSession) {
-            // Work session ended
-            const newCycles = prev.cyclesCompleted + 1
-            let nextIsWork = true
-            let nextSeconds = prev.breakMinutes * 60
-
-            // Check if long break needed
-            if (newCycles % prev.longBreakAfter === 0) {
-              nextSeconds = prev.longBreakMinutes * 60
-            }
-
-            // Check if all cycles complete (after long break)
-            if (newCycles % prev.longBreakAfter === 0) {
-              initializeAudioContext()
-              const sessionMinutes = Math.round(
-                (new Date().getTime() - prev.sessionStartTime.getTime()) / 60000
-              )
-              return {
-                ...prev,
-                cyclesCompleted: newCycles,
-                isWorkSession: false,
-                secondsRemaining: nextSeconds,
-                totalSessionMinutes: sessionMinutes,
-                isRunning: prev.autoStartNext,
-                isComplete: false, // Will be marked complete on next break end
-              }
-            }
-
-            // Normal break
-            return {
-              ...prev,
-              cyclesCompleted: newCycles,
-              isWorkSession: false,
-              secondsRemaining: nextSeconds,
-              isRunning: prev.autoStartNext,
-            }
-          } else {
-            // Break session ended
-            initializeAudioContext()
-            const sessionMinutes = Math.round(
-              (new Date().getTime() - prev.sessionStartTime.getTime()) / 60000
-            )
-
-            // Check if this was a long break (after completing cycles)
-            if (prev.cyclesCompleted % prev.longBreakAfter === 0) {
-              return {
-                ...prev,
-                isWorkSession: true,
-                secondsRemaining: prev.workMinutes * 60,
-                totalSessionMinutes: sessionMinutes,
-                isComplete: true,
-              }
-            }
-
-            // Regular break -> back to work
-            return {
-              ...prev,
-              isWorkSession: true,
-              secondsRemaining: prev.workMinutes * 60,
-              isRunning: prev.autoStartNext,
-            }
-          }
-        }
-
-        return { ...prev, secondsRemaining: newSeconds }
+        const nextSeconds = Math.max(0, Math.ceil(remainingMs / 1000))
+        if (nextSeconds === prev.secondsRemaining) return prev
+        return { ...prev, secondsRemaining: nextSeconds }
       })
-    }, 1000)
+    }
+
+    tick()
+    intervalRef.current = setInterval(tick, 250)
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
-  }, [state.isRunning, state.isWorkSession, playBeep, initializeAudioContext])
+  }, [state.isRunning, state.secondsRemaining, transitionToNextPhase])
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -169,18 +240,41 @@ export default function TimerPage() {
       if (e.code === 'Space') {
         e.preventDefault()
         initializeAudioContext()
-        setState(prev => ({
-          ...prev,
-          isRunning: !prev.isRunning,
-          showSettings: false,
-        }))
+        setState(prev => {
+          const now = Date.now()
+          const willRun = !prev.isRunning
+
+          if (willRun) {
+            const isNewSession =
+              prev.cyclesCompleted === 0 &&
+              prev.isWorkSession &&
+              prev.secondsRemaining === prev.workMinutes * 60
+
+            phaseEndTimeRef.current = now + prev.secondsRemaining * 1000
+            return {
+              ...prev,
+              isRunning: true,
+              showSettings: false,
+              sessionStartTime: isNewSession ? new Date(now) : prev.sessionStartTime,
+            }
+          }
+
+          phaseEndTimeRef.current = null
+          return {
+            ...prev,
+            isRunning: false,
+            showSettings: false,
+          }
+        })
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault()
         initializeAudioContext()
+        phaseEndTimeRef.current = null
         setState(prev => ({
           ...prev,
           isRunning: false,
           isWorkSession: true,
+          isLongBreak: false,
           secondsRemaining: prev.workMinutes * 60,
           cyclesCompleted: 0,
           totalSessionMinutes: 0,
@@ -190,14 +284,33 @@ export default function TimerPage() {
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault()
         initializeAudioContext()
-        setState(prev => ({
-          ...prev,
-          isRunning: false,
-          isWorkSession: !prev.isWorkSession,
-          secondsRemaining: prev.isWorkSession
-            ? prev.breakMinutes * 60
-            : prev.workMinutes * 60,
-        }))
+        phaseEndTimeRef.current = null
+        setState(prev => {
+          if (prev.isWorkSession) {
+            const newCycles = prev.cyclesCompleted + 1
+            const nextIsLongBreak = newCycles % prev.longBreakAfter === 0
+
+            return {
+              ...prev,
+              isRunning: false,
+              isWorkSession: false,
+              isLongBreak: nextIsLongBreak,
+              cyclesCompleted: newCycles,
+              secondsRemaining: (nextIsLongBreak ? prev.longBreakMinutes : prev.breakMinutes) * 60,
+            }
+          }
+
+          return {
+            ...prev,
+            isRunning: false,
+            isWorkSession: true,
+            isLongBreak: false,
+            secondsRemaining: prev.workMinutes * 60,
+          }
+        })
+      } else if (e.key === 'x' || e.key === 'X') {
+        e.preventDefault()
+        void handleStop()
       } else if (e.key === 'Escape') {
         window.history.back()
       }
@@ -205,22 +318,46 @@ export default function TimerPage() {
 
     window.addEventListener('keydown', handleKeydown)
     return () => window.removeEventListener('keydown', handleKeydown)
-  }, [initializeAudioContext])
+  }, [handleStop, initializeAudioContext])
 
   const handleStart = useCallback(() => {
     initializeAudioContext()
-    setState(prev => ({
-      ...prev,
-      isRunning: !prev.isRunning,
-      showSettings: false,
-    }))
+    setState(prev => {
+      const now = Date.now()
+      const willRun = !prev.isRunning
+
+      if (willRun) {
+        const isNewSession =
+          prev.cyclesCompleted === 0 &&
+          prev.isWorkSession &&
+          prev.secondsRemaining === prev.workMinutes * 60
+
+        phaseEndTimeRef.current = now + prev.secondsRemaining * 1000
+
+        return {
+          ...prev,
+          isRunning: true,
+          showSettings: false,
+          sessionStartTime: isNewSession ? new Date(now) : prev.sessionStartTime,
+        }
+      }
+
+      phaseEndTimeRef.current = null
+      return {
+        ...prev,
+        isRunning: false,
+        showSettings: false,
+      }
+    })
   }, [initializeAudioContext])
 
   const handleReset = useCallback(() => {
+    phaseEndTimeRef.current = null
     setState(prev => ({
       ...prev,
       isRunning: false,
       isWorkSession: true,
+      isLongBreak: false,
       secondsRemaining: prev.workMinutes * 60,
       cyclesCompleted: 0,
       totalSessionMinutes: 0,
@@ -230,18 +367,39 @@ export default function TimerPage() {
   }, [])
 
   const handleSkip = useCallback(() => {
-    setState(prev => ({
-      ...prev,
-      isRunning: false,
-      isWorkSession: !prev.isWorkSession,
-      secondsRemaining: prev.isWorkSession
-        ? prev.breakMinutes * 60
-        : prev.workMinutes * 60,
-    }))
+    phaseEndTimeRef.current = null
+    setState(prev => {
+      if (prev.isWorkSession) {
+        const newCycles = prev.cyclesCompleted + 1
+        const nextIsLongBreak = newCycles % prev.longBreakAfter === 0
+
+        return {
+          ...prev,
+          isRunning: false,
+          isWorkSession: false,
+          isLongBreak: nextIsLongBreak,
+          cyclesCompleted: newCycles,
+          secondsRemaining: (nextIsLongBreak ? prev.longBreakMinutes : prev.breakMinutes) * 60,
+        }
+      }
+
+      return {
+        ...prev,
+        isRunning: false,
+        isWorkSession: true,
+        isLongBreak: false,
+        secondsRemaining: prev.workMinutes * 60,
+      }
+    })
   }, [])
 
   const handleSaveSession = async () => {
     try {
+      const computedMinutes = Math.max(
+        state.totalSessionMinutes,
+        getElapsedMinutes(state.sessionStartTime, Date.now())
+      )
+
       const response = await fetch('/api/pomodoro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -254,17 +412,19 @@ export default function TimerPage() {
           subject: state.subject || null,
           topicName: state.topic || null,
           status: 'completed',
-          totalMinutes: state.totalSessionMinutes,
+          totalMinutes: computedMinutes,
         }),
       })
 
       if (response.ok) {
+        phaseEndTimeRef.current = null
         setTimeout(() => {
           setState(prev => ({
             ...prev,
             isComplete: false,
             isRunning: false,
             isWorkSession: true,
+            isLongBreak: false,
             secondsRemaining: prev.workMinutes * 60,
             cyclesCompleted: 0,
             totalSessionMinutes: 0,
@@ -278,11 +438,13 @@ export default function TimerPage() {
   }
 
   const handleStartAnother = useCallback(() => {
+    phaseEndTimeRef.current = null
     setState(prev => ({
       ...prev,
       isComplete: false,
       isRunning: false,
       isWorkSession: true,
+      isLongBreak: false,
       secondsRemaining: prev.workMinutes * 60,
       cyclesCompleted: 0,
       totalSessionMinutes: 0,
@@ -298,7 +460,7 @@ export default function TimerPage() {
   // Calculate progress for SVG
   const totalSeconds = state.isWorkSession
     ? state.workMinutes * 60
-    : state.isWorkSession === false && state.cyclesCompleted % state.longBreakAfter === 0
+    : state.isLongBreak
     ? state.longBreakMinutes * 60
     : state.breakMinutes * 60
 
@@ -423,6 +585,8 @@ export default function TimerPage() {
         color: 'white',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         overflow: 'hidden',
+        boxSizing: 'border-box',
+        padding: '1.5rem',
       }}
     >
       {/* Exit Button */}
@@ -483,10 +647,10 @@ export default function TimerPage() {
             padding: '2rem',
             border: '1px solid rgba(255,255,255,0.1)',
             zIndex: 200,
-            maxWidth: '90%',
-            width: '100%',
+            width: 'min(560px, calc(100vw - 2rem))',
             maxHeight: '80vh',
             overflowY: 'auto',
+            boxSizing: 'border-box',
           }}
         >
           <h2 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem' }}>
@@ -681,7 +845,16 @@ export default function TimerPage() {
       )}
 
       {/* Timer Display */}
-      <div style={{ textAlign: 'center', marginTop: '-2rem' }}>
+      <div
+        style={{
+          textAlign: 'center',
+          width: '100%',
+          maxWidth: '420px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
         {/* Mode Label */}
         <div
           style={{
@@ -693,15 +866,24 @@ export default function TimerPage() {
             fontWeight: 600,
           }}
         >
-          {state.isWorkSession ? 'FOCUS' : 'BREAK'}
+          {state.isWorkSession ? 'FOCUS' : state.isLongBreak ? 'LONG BREAK' : 'BREAK'}
         </div>
 
         {/* Time Display with SVG Ring */}
-        <div style={{ position: 'relative', width: '320px', height: '320px', margin: '0 auto 2rem' }}>
+        <div
+          style={{
+            position: 'relative',
+            width: 'min(78vw, 320px)',
+            height: 'min(78vw, 320px)',
+            maxWidth: '320px',
+            maxHeight: '320px',
+            margin: '0 auto 1.5rem',
+          }}
+        >
           <svg
             width="320"
             height="320"
-            style={{ position: 'absolute', top: 0, left: 0 }}
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
           >
             <circle
               cx="160"
@@ -766,7 +948,17 @@ export default function TimerPage() {
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', justifyContent: 'center' }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: '1rem 2rem',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexWrap: 'wrap',
+          width: '100%',
+          maxWidth: '420px',
+        }}
+      >
         {/* Reset Button */}
         <button
           onClick={handleReset}
@@ -814,6 +1006,38 @@ export default function TimerPage() {
           {state.isRunning ? '⏸' : '▶'}
         </button>
 
+        {/* Stop Button */}
+        <button
+          onClick={() => void handleStop()}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(239,68,68,0.5)',
+            color: '#fca5a5',
+            width: '2.5rem',
+            height: '2.5rem',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '1rem',
+            transition: 'all 0.2s',
+            fontWeight: 700,
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.borderColor = 'rgba(239,68,68,0.9)'
+            e.currentTarget.style.color = '#fecaca'
+            e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.08)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.borderColor = 'rgba(239,68,68,0.5)'
+            e.currentTarget.style.color = '#fca5a5'
+            e.currentTarget.style.backgroundColor = 'transparent'
+          }}
+        >
+          ■
+        </button>
+
         {/* Skip Button */}
         <button
           onClick={handleSkip}
@@ -848,9 +1072,13 @@ export default function TimerPage() {
           fontSize: '0.75rem',
           color: '#666',
           textAlign: 'center',
+          width: '100%',
+          maxWidth: '420px',
+          paddingInline: '1rem',
+          boxSizing: 'border-box',
         }}
       >
-        <div>Space: Start/Pause | R: Reset | S: Skip | Esc: Exit</div>
+        <div>Space: Start/Pause | X: Stop | R: Reset | S: Skip | Esc: Exit</div>
       </div>
     </div>
   )
