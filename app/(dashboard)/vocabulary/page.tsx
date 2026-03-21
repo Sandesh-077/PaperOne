@@ -80,10 +80,15 @@ export default function VocabularyPage() {
       const response = await fetch('/api/vocabulary')
       if (response.ok) {
         const data = await response.json()
-        setVocabulary(data)
+        // Ensure data is always an array
+        setVocabulary(Array.isArray(data) ? data : [])
+      } else {
+        console.error('Failed to fetch vocabulary:', response.status)
+        setVocabulary([])
       }
     } catch (error) {
       console.error('Failed to fetch vocabulary:', error)
+      setVocabulary([])
     } finally {
       setLoading(false)
     }
@@ -400,17 +405,17 @@ export default function VocabularyPage() {
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-semibold text-blue-900 mb-2">Academic Example</h4>
-                  <p className="text-blue-800 italic">&ldquo;{teaching.academicExample}&rdquo;</p>
+                  <p className="text-blue-800 italic">&ldquo;{teaching.academicExample || teaching.definition}&rdquo;</p>
                 </div>
 
-                {teaching.synonyms && teaching.synonyms.length > 0 && (
+                {Array.isArray(teaching.synonyms) && teaching.synonyms.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="font-semibold text-gray-900">Synonyms & Nuance</h4>
                     <div className="grid gap-2">
                       {teaching.synonyms.map((syn, idx) => (
                         <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                          <p className="font-semibold text-gray-900">{syn.word}</p>
-                          <p className="text-sm text-gray-700 mt-1">{syn.nuance}</p>
+                          <p className="font-semibold text-gray-900">{syn?.word || 'N/A'}</p>
+                          <p className="text-sm text-gray-700 mt-1">{syn?.nuance || ''}</p>
                         </div>
                       ))}
                     </div>
@@ -419,7 +424,7 @@ export default function VocabularyPage() {
 
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                   <h4 className="font-semibold text-purple-900 mb-2">💡 GP Tip</h4>
-                  <p className="text-purple-800">{teaching.gpTip}</p>
+                  <p className="text-purple-800">{teaching.gpTip || 'Use this word to enhance your writing.'}</p>
                 </div>
               </div>
             )}
@@ -459,16 +464,16 @@ export default function VocabularyPage() {
               {improveLoading ? '🔄 Analyzing...' : '✨ Find Better Words'}
             </button>
 
-            {suggestions && suggestions.length > 0 && (
+            {Array.isArray(suggestions) && suggestions.length > 0 && (
               <div className="space-y-3 mt-6 pt-6 border-t border-gray-200">
                 <h4 className="font-semibold text-gray-900">Vocabulary Suggestions</h4>
                 {suggestions.map((suggestion, idx) => (
                   <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-lg font-semibold text-gray-900">{suggestion.original}</span>
+                      <span className="text-lg font-semibold text-gray-900">{suggestion?.original || 'Word'}</span>
                       <span className="text-gray-400">→</span>
                       <div className="flex flex-wrap gap-2">
-                        {suggestion.alternatives.map((alt, altIdx) => (
+                        {Array.isArray(suggestion?.alternatives) && suggestion.alternatives.map((alt, altIdx) => (
                           <span key={altIdx} className="bg-green-100 text-green-700 px-2 py-1 rounded text-sm font-medium">
                             {alt}
                           </span>
@@ -476,14 +481,14 @@ export default function VocabularyPage() {
                       </div>
                     </div>
                     <p className="text-sm text-gray-700 bg-white p-3 rounded border border-gray-100">
-                      <strong>Why:</strong> {suggestion.why}
+                      <strong>Why:</strong> {suggestion?.why || 'Consider this alternative.'}
                     </p>
                   </div>
                 ))}
               </div>
             )}
 
-            {suggestions && suggestions.length === 0 && (
+            {Array.isArray(suggestions) && suggestions.length === 0 && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-6">
                 <p className="text-green-700 font-medium">✓ Your vocabulary usage is strong! Consider adding more discipline-specific terms.</p>
               </div>
@@ -603,7 +608,7 @@ export default function VocabularyPage() {
                     )}
                   </div>
                   <p className="text-gray-700 mb-2">{vocab.definition}</p>
-                  {vocab.sentences && vocab.sentences.length > 0 && (
+                  {Array.isArray(vocab.sentences) && vocab.sentences.length > 0 && (
                     <div className="mt-2 space-y-1">
                       {vocab.sentences.map((sentence, idx) => (
                         <p key={idx} className="text-gray-600 italic text-sm ml-4">• &ldquo;{sentence}&rdquo;</p>
