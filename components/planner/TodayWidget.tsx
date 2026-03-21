@@ -59,7 +59,12 @@ export function TodayWidget() {
       const response = await fetch('/api/revision-plan')
       if (response.ok) {
         const data = await response.json()
-        setPlanData(data)
+        setPlanData({
+          plan: data?.plan ?? null,
+          todayTasks: Array.isArray(data?.todayTasks) ? data.todayTasks : [],
+          nextExams: Array.isArray(data?.nextExams) ? data.nextExams : [],
+          stats: data?.stats ?? null,
+        })
       }
     } catch (error) {
       console.error('Failed to fetch plan data:', error)
@@ -95,7 +100,7 @@ export function TodayWidget() {
     )
   }
 
-  if (!planData?.plan || planData.todayTasks.length === 0) {
+  if (!planData?.plan || !Array.isArray(planData?.todayTasks) || planData.todayTasks.length === 0) {
     return (
       <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
         <div className="text-center">
@@ -108,7 +113,8 @@ export function TodayWidget() {
     )
   }
 
-  const { todayTasks, nextExams } = planData
+  const todayTasks = Array.isArray(planData?.todayTasks) ? planData.todayTasks : []
+  const nextExams = Array.isArray(planData?.nextExams) ? planData.nextExams : []
   const today = new Date()
   const formattedDate = today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   const nextExam = nextExams?.[0]
