@@ -224,7 +224,7 @@ export default function LearningJournalPage() {
             <div className="bg-white rounded-xl shadow-lg p-6 sticky top-8">
               <h2 className="text-xl font-bold text-gray-800 mb-4">Today&apos;s Words</h2>
               <div className="space-y-3">
-                {dailyWords.map((word) => (
+                {dailyWords && Array.isArray(dailyWords) && dailyWords.map((word) => (
                   <button
                     key={word.id}
                     onClick={() => setSelectedWord(word)}

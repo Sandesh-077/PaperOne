@@ -56,7 +56,7 @@ export default function TopicsPage() {
           setTopics(data.topics || [])
           
           // Set default selected subject to first subject if not set
-          if (!selectedSubject && data.topics.length > 0) {
+          if (!selectedSubject && data && data.topics && Array.isArray(data.topics) && data.topics.length > 0) {
             const firstSubject = data.topics[0].subject
             console.log('📌 Setting default subject:', firstSubject)
             setSelectedSubject(firstSubject)

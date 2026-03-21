@@ -375,7 +375,7 @@ export default function WritingPracticePage() {
               </div>
 
               {/* Grammar Issues */}
-              {feedback.aiFeedback.grammarErrors && feedback.aiFeedback.grammarErrors.length > 0 && (
+              {feedback.aiFeedback && feedback.aiFeedback.grammarErrors && feedback.aiFeedback.grammarErrors.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                     <span className="text-red-600">⚠️</span> Grammar Issues Found
@@ -400,7 +400,7 @@ export default function WritingPracticePage() {
               )}
 
               {/* Vocabulary Analysis */}
-              {feedback.aiFeedback.vocabularyAnalysis && feedback.aiFeedback.vocabularyAnalysis.length > 0 && (
+              {feedback.aiFeedback && feedback.aiFeedback.vocabularyAnalysis && feedback.aiFeedback.vocabularyAnalysis.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-gray-800 mb-4">📚 Vocabulary Analysis</h3>
                   <div className="space-y-3">
@@ -415,7 +415,7 @@ export default function WritingPracticePage() {
               )}
 
               {/* Strengths */}
-              {feedback.aiFeedback.strengths && feedback.aiFeedback.strengths.length > 0 && (
+              {feedback.aiFeedback && feedback.aiFeedback.strengths && feedback.aiFeedback.strengths.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-gray-800 mb-4">✅ Strengths</h3>
                   <ul className="space-y-2">
@@ -430,7 +430,7 @@ export default function WritingPracticePage() {
               )}
 
               {/* Improvements */}
-              {feedback.aiFeedback.improvements && feedback.aiFeedback.improvements.length > 0 && (
+              {feedback.aiFeedback && feedback.aiFeedback.improvements && feedback.aiFeedback.improvements.length > 0 && (
                 <div className="mb-8">
                   <h3 className="text-lg font-bold text-gray-800 mb-4">📈 Next Steps</h3>
                   <ul className="space-y-2">
@@ -445,7 +445,7 @@ export default function WritingPracticePage() {
               )}
 
               {/* Grammar Areas to Focus */}
-              {feedback.grammarAreasFound && feedback.grammarAreasFound.length > 0 && (
+              {feedback && feedback.grammarAreasFound && Array.isArray(feedback.grammarAreasFound) && feedback.grammarAreasFound.length > 0 && (
                 <div className="rounded-lg bg-orange-50 border border-orange-200 p-4 mt-8">
                   <p className="text-orange-900 font-semibold mb-2">
                     🎯 Areas to Focus On (Added to your Grammar Coach):
