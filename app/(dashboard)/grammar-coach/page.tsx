@@ -149,7 +149,7 @@ export default function GrammarCoachPage() {
               Submit some writing practice pieces to get started. AI will analyze them and identify areas for improvement.
             </p>
             <a
-              href="/dashboard/writing-practice"
+              href="/writing-practice"
               className="inline-block mt-6 px-6 py-3 bg-orange-600 text-white rounded-lg font-semibold hover:bg-orange-700 transition"
             >
               Go to Writing Practice →

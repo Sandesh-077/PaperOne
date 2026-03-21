@@ -470,7 +470,7 @@ export default function WritingPracticePage() {
                 Write Another Piece
               </button>
               <a
-                href="/dashboard/grammar-coach"
+                href="/grammar-coach"
                 className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-semibold hover:bg-orange-700 transition text-center"
               >
                 Go to Grammar Coach

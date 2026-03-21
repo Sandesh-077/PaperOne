@@ -260,7 +260,7 @@ export default function VocabularyPage() {
               📚 Today&apos;s Vocabulary Focus
               <span className="text-sm font-normal text-gray-600 ml-2">({learnedCount}/5 mastered)</span>
             </h2>
-            <a href="/dashboard/learning-journal" className="text-sm text-purple-600 hover:text-purple-700 font-semibold">
+            <a href="/learning-journal" className="text-sm text-purple-600 hover:text-purple-700 font-semibold">
               Go to Journal →
             </a>
           </div>
@@ -305,10 +305,10 @@ export default function VocabularyPage() {
           </div>
 
           <div className="mt-4 flex gap-4">
-            <a href="/dashboard/writing-practice" className="flex-1 text-center bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition font-semibold text-sm">
+            <a href="/writing-practice" className="flex-1 text-center bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition font-semibold text-sm">
               Practice Writing
             </a>
-            <a href="/dashboard/grammar-coach" className="flex-1 text-center bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-semibold text-sm">
+            <a href="/grammar-coach" className="flex-1 text-center bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-semibold text-sm">
               Grammar Coach
             </a>
           </div>

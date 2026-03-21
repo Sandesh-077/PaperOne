@@ -195,7 +195,7 @@ export default function EnhancedDashboardPage() {
           <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-lg p-6 shadow-sm border border-purple-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">📚 Today&apos;s 5 Words</h3>
-              <Link href="/dashboard/vocabulary" className="text-sm text-purple-600 hover:text-purple-700">
+              <Link href="/vocabulary" className="text-sm text-purple-600 hover:text-purple-700">
                 View All →
               </Link>
             </div>
@@ -214,7 +214,7 @@ export default function EnhancedDashboardPage() {
               ))}
             </div>
             <a
-              href="/dashboard/writing-practice"
+              href="/writing-practice"
               className="w-full block text-center bg-purple-600 text-white py-2 rounded-lg hover:bg-purple-700 transition font-semibold text-sm"
             >
               Practice Writing
@@ -227,7 +227,7 @@ export default function EnhancedDashboardPage() {
           <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-6 shadow-sm border border-orange-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">✍️ Latest Writing</h3>
-              <Link href="/dashboard/writing-practice" className="text-sm text-orange-600 hover:text-orange-700">
+              <Link href="/writing-practice" className="text-sm text-orange-600 hover:text-orange-700">
                 View All →
               </Link>
             </div>
@@ -259,7 +259,7 @@ export default function EnhancedDashboardPage() {
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-gray-900">⚠️ Top Grammar Areas to Focus</h3>
-            <Link href="/dashboard/grammar-coach" className="text-sm text-red-600 hover:text-red-700">
+            <Link href="/grammar-coach" className="text-sm text-red-600 hover:text-red-700">
               Go to Coach →
             </Link>
           </div>
