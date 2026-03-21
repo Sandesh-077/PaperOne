@@ -63,9 +63,10 @@ export default function WritingPracticePage() {
       try {
         const response = await fetch('/api/writing-practice');
         const data = await response.json();
-        setPastSubmissions(data.submissions || []);
+        setPastSubmissions(Array.isArray(data?.submissions) ? data.submissions : []);
       } catch (error) {
         console.error('Error fetching submissions:', error);
+        setPastSubmissions([]);
       }
     };
 

@@ -41,9 +41,10 @@ export default function GrammarCoachPage() {
       try {
         const response = await fetch('/api/grammar-weakness');
         const data = await response.json();
-        setWeaknesses(data.weaknesses || []);
+        setWeaknesses(Array.isArray(data?.weaknesses) ? data.weaknesses : []);
       } catch (error) {
         console.error('Error fetching weaknesses:', error);
+        setWeaknesses([]);
       }
     };
 
@@ -67,13 +68,16 @@ export default function GrammarCoachPage() {
         });
 
         const data = await response.json();
-        if (data.exercises) {
+        if (Array.isArray(data?.exercises)) {
           setExercises(data.exercises);
           setUserAnswers({});
           setShowAnswers({});
+        } else {
+          setExercises([]);
         }
       } catch (error) {
         console.error('Error fetching exercises:', error);
+        setExercises([]);
       } finally {
         setLoadingExercises(false);
       }
