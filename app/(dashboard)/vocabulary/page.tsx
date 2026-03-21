@@ -33,6 +33,7 @@ interface VocabularyFeedback {
 }
 
 export default function VocabularyPage() {
+  // Vocabulary learning and tracking page for Cambridge A-Level General Paper
   const router = useRouter()
   const { status } = useSession()
   const [vocabulary, setVocabulary] = useState<Vocabulary[]>([])
