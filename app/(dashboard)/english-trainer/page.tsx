@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
+const GRAMMAR_MASTERY_THRESHOLD = 8
+
 interface EnglishProfile {
   grammarLevel: number
   vocabLevel: number
@@ -52,12 +54,10 @@ interface FeedbackData {
     betterAlternatives: Array<{ used: string; suggested: string }>
     vocabComment: string
   }
-  argumentAnalysis: {
-    hasPoint: boolean
-    hasEvidence: boolean
-    hasEvaluation: boolean
-    argumentScore: number
-    argumentComment: string
+  sentenceFormationAnalysis: {
+    sentenceFormationScore: number
+    sentenceFormationComment: string
+    suggestedRewrites: Array<{ original: string; improved: string; explanation: string }>
   }
   correctedVersion: string
   overallFeedback: string
@@ -118,13 +118,18 @@ export default function EnglishTrainerPage() {
     }
   }, [status, router, fetchProfile])
 
-  const startLesson = async () => {
+  const startLesson = async (options?: {
+    lockedGrammarRule?: string
+    previousVocabWords?: string[]
+    todayTopic?: string
+    retryMode?: boolean
+  }) => {
     setGeneratingLesson(true)
     try {
       const response = await fetch('/api/english-trainer/daily-lesson', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
+        body: JSON.stringify(options || {})
       })
 
       if (response.ok) {
@@ -199,7 +204,26 @@ export default function EnglishTrainerPage() {
     setFeedback(null)
     setPracticeResponse('')
     setLevelUpMessage(null)
-    startLesson()
+
+    if (!lesson) {
+      await startLesson()
+      return
+    }
+
+    const score = feedback?.grammarAnalysis?.grammarScore ?? 0
+    const shouldMoveToNextRule = score >= GRAMMAR_MASTERY_THRESHOLD
+
+    if (shouldMoveToNextRule) {
+      await startLesson()
+      return
+    }
+
+    await startLesson({
+      lockedGrammarRule: lesson.grammarRule.name,
+      previousVocabWords: lesson.vocabWords.map((word) => word.word),
+      todayTopic: lesson.todayTopic,
+      retryMode: true
+    })
   }
 
   if (loading) {
@@ -528,43 +552,32 @@ export default function EnglishTrainerPage() {
                   <p className="text-gray-700">{feedback.vocabAnalysis.vocabComment}</p>
                 </div>
 
-                {/* Argument Feedback */}
+                {/* Sentence Formation Feedback */}
                 <div className="bg-white rounded-lg shadow-sm p-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-4">Argument Analysis</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Sentence Formation</h3>
 
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-center gap-3">
-                      {feedback.argumentAnalysis.hasPoint ? (
-                        <span className="text-2xl">✅</span>
-                      ) : (
-                        <span className="text-2xl">❌</span>
-                      )}
-                      <span className="text-gray-700">Has a clear point</span>
+                  {feedback.sentenceFormationAnalysis.suggestedRewrites.length > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                      <p className="text-sm font-semibold text-yellow-900 mb-3">Suggested rewrites:</p>
+                      {feedback.sentenceFormationAnalysis.suggestedRewrites.map((item, i) => (
+                        <div key={i} className="mb-3 text-sm">
+                          <p className="text-gray-700 mb-1">
+                            <span className="line-through text-gray-600">{item.original}</span>
+                            {' -> '}
+                            <span className="text-blue-700 font-semibold">{item.improved}</span>
+                          </p>
+                          <p className="text-gray-600 text-xs">{item.explanation}</p>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-3">
-                      {feedback.argumentAnalysis.hasEvidence ? (
-                        <span className="text-2xl">✅</span>
-                      ) : (
-                        <span className="text-2xl">❌</span>
-                      )}
-                      <span className="text-gray-700">Has supporting evidence</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {feedback.argumentAnalysis.hasEvaluation ? (
-                        <span className="text-2xl">✅</span>
-                      ) : (
-                        <span className="text-2xl">❌</span>
-                      )}
-                      <span className="text-gray-700">Has evaluation</span>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="flex items-center gap-3 mb-2">
                     <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm font-bold">
-                      {feedback.argumentAnalysis.argumentScore}/10
+                      {feedback.sentenceFormationAnalysis.sentenceFormationScore}/10
                     </span>
                   </div>
-                  <p className="text-gray-700">{feedback.argumentAnalysis.argumentComment}</p>
+                  <p className="text-gray-700">{feedback.sentenceFormationAnalysis.sentenceFormationComment}</p>
                 </div>
 
                 {/* Corrected Version */}
@@ -595,7 +608,9 @@ export default function EnglishTrainerPage() {
                   onClick={tryAnotherQuestion}
                   className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 text-center"
                 >
-                  Try another question
+                  {feedback.grammarAnalysis.grammarScore >= GRAMMAR_MASTERY_THRESHOLD
+                    ? 'Try another question (next grammar rule)'
+                    : `Try again on same grammar rule (need ${GRAMMAR_MASTERY_THRESHOLD}/10+)`}
                 </button>
               </div>
             )}

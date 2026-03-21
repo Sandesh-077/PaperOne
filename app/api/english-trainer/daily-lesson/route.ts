@@ -18,6 +18,18 @@ export async function POST(req: Request) {
   }
 
   try {
+    const requestBody = await req.json().catch(() => ({}))
+    const lockedGrammarRule = typeof requestBody?.lockedGrammarRule === 'string'
+      ? requestBody.lockedGrammarRule.trim()
+      : ''
+    const previousVocabWords = Array.isArray(requestBody?.previousVocabWords)
+      ? requestBody.previousVocabWords.filter((word: unknown) => typeof word === 'string')
+      : []
+    const todayTopicOverride = typeof requestBody?.todayTopic === 'string'
+      ? requestBody.todayTopic.trim()
+      : ''
+    const retryMode = Boolean(requestBody?.retryMode)
+
     // Test log: confirm route is reached
     console.log('daily-lesson called for user:', user.id)
     console.log('session.user.id:', session.user.id)
@@ -62,10 +74,23 @@ export async function POST(req: Request) {
       .map((item: any) => `${item.itemType}: ${item.content}`)
       .join(', ')
 
+    const retryInstructions = lockedGrammarRule
+      ? `
+CRITICAL RETRY RULES:
+- Keep the grammar rule EXACTLY the same as: ${lockedGrammarRule}. Do not advance to a different grammar rule.
+- Keep the topic consistent with: ${todayTopicOverride || 'the current topic'}.
+- Use exactly 3 vocab words total.
+- Keep at least one word from this previous list: ${previousVocabWords.join(', ') || 'none'}.
+- Replace only one or two vocab words with new words.
+`
+      : ''
+
     // Build prompt for Gemini
     const prompt = `You are a Cambridge A-Level English General Paper teacher. This student is at grammar level ${profile.grammarLevel}/10 and vocabulary level ${profile.vocabLevel}/10. They are preparing for Cambridge GP 8021, SAT Writing (750+ target), and IELTS 7.0+.
 
 Recently learned items to AVOID repeating: ${recentContent || 'none yet'}
+
+${retryInstructions}
 
 Generate today's lesson. Return ONLY valid JSON:
 {
@@ -113,6 +138,13 @@ Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
     // Validate lesson structure
     if (!lesson.grammarRule || !lesson.vocabWords || !lesson.todayTopic) {
       throw new Error('Invalid lesson structure from Gemini - missing required fields')
+    }
+
+    if (lockedGrammarRule) {
+      lesson.grammarRule.name = lockedGrammarRule
+      if (todayTopicOverride) {
+        lesson.todayTopic = todayTopicOverride
+      }
     }
 
     // Save the grammar rule as a LearnedItem
@@ -179,46 +211,50 @@ Return exactly 3 vocab words with difficulty matching ${profile.vocabLevel}.`
       newStreak = 1
     }
 
-    console.log('Updating EnglishProfile - new streak:', newStreak, 'new totalSessions:', profile.totalSessions + 1)
-    const updatedProfile = await (prisma as any).englishProfile.update({
-      where: { userId: user.id },
-      data: {
-        totalSessions: profile.totalSessions + 1,
-        lastActiveDate: new Date(),
-        streak: newStreak
-      }
-    })
-    console.log('EnglishProfile updated successfully')
+    let updatedProfile = profile
+    if (!retryMode) {
+      console.log('Updating EnglishProfile - new streak:', newStreak, 'new totalSessions:', profile.totalSessions + 1)
+      updatedProfile = await (prisma as any).englishProfile.update({
+        where: { userId: user.id },
+        data: {
+          totalSessions: profile.totalSessions + 1,
+          lastActiveDate: new Date(),
+          streak: newStreak
+        }
+      })
+      console.log('EnglishProfile updated successfully')
+    }
 
     // Save TrainerSession
     console.log('Creating TrainerSession record...')
     try {
-      await (prisma as any).trainerSession.create({
+      const trainerSession = await (prisma as any).trainerSession.create({
         data: {
           userId: user.id,
-          sessionType: 'learn',
+          sessionType: retryMode ? 'practice' : 'learn',
           topic: lesson.todayTopic,
           grammarRule: lesson.grammarRule.name,
           vocabWords: lesson.vocabWords
         }
       })
       console.log('TrainerSession created successfully')
+
+      console.log('Daily lesson completed successfully for user:', user.id)
+      return NextResponse.json({
+        lesson,
+        profile: {
+          grammarLevel: updatedProfile.grammarLevel,
+          vocabLevel: updatedProfile.vocabLevel,
+          writingLevel: updatedProfile.writingLevel,
+          overallScore: updatedProfile.overallScore,
+          streak: updatedProfile.streak
+        },
+        trainerSessionId: trainerSession.id
+      })
     } catch (sessionError: any) {
       console.error('Error creating TrainerSession:', sessionError.message, sessionError.stack)
       throw sessionError
     }
-
-    console.log('Daily lesson completed successfully for user:', user.id)
-    return NextResponse.json({
-      lesson,
-      profile: {
-        grammarLevel: updatedProfile.grammarLevel,
-        vocabLevel: updatedProfile.vocabLevel,
-        writingLevel: updatedProfile.writingLevel,
-        overallScore: updatedProfile.overallScore,
-        streak: updatedProfile.streak
-      }
-    })
   } catch (error: any) {
     console.error('Daily lesson error:', error)
     console.error('Error message:', error.message)

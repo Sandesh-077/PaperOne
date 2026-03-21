@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     // Build prompt for evaluation
     const vocabWordsStr = Array.isArray(vocabWords) ? vocabWords.join(', ') : ''
 
-    const prompt = `You are a Cambridge A-Level English General Paper examiner and language teacher. Evaluate this student's written response strictly but constructively.
+    const prompt = `You are an English language teacher focused on grammar, sentence formation, and vocabulary. Evaluate this student's written response strictly but constructively.
 
 Grammar rule they were supposed to use: ${grammarRule}
 Vocabulary words they were taught: ${vocabWordsStr}
@@ -48,6 +48,11 @@ Question asked: ${questionAsked}
 Student's response: ${response}
 
 Current student levels — Grammar: ${profile.grammarLevel}/10, Vocab: ${profile.vocabLevel}/10
+
+Important scope:
+- Do NOT evaluate GP essay argument quality (no point/evidence/evaluation rubric here).
+- Focus only on grammar accuracy, sentence formation quality, and vocabulary use.
+- Keep feedback practical for short practice responses.
 
 Evaluate and return ONLY valid JSON:
 {
@@ -63,12 +68,10 @@ Evaluate and return ONLY valid JSON:
     "betterAlternatives": [{ "used": "...simpler word they used...", "suggested": "...better academic word..." }],
     "vocabComment": "...one sentence..."
   },
-  "argumentAnalysis": {
-    "hasPoint": true,
-    "hasEvidence": true,
-    "hasEvaluation": true,
-    "argumentScore": 8,
-    "argumentComment": "...one sentence on argument quality..."
+  "sentenceFormationAnalysis": {
+    "sentenceFormationScore": 8,
+    "sentenceFormationComment": "...one sentence on sentence clarity, flow, and structure...",
+    "suggestedRewrites": [{ "original": "...", "improved": "...", "explanation": "..." }]
   },
   "correctedVersion": "...the full response rewritten correctly with improvements shown...",
   "overallFeedback": "...2-3 sentences of holistic feedback...",
